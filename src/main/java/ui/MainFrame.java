@@ -75,7 +75,7 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         connectionStatusLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         connectionStatusLabel.setForeground(isDbConnected ? new Color(52, 211, 153) : new Color(248, 113, 113));
 
-        currentUserBadge = new JLabel("Active: None");
+        currentUserBadge = new JLabel("User: None");
         currentUserBadge.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         currentUserBadge.setForeground(Color.WHITE);
         currentUserBadge.setBorder(new CompoundBorder(
@@ -177,9 +177,9 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
     public void selectUser(User user) {
         this.currentUser = user;
         if (user != null) {
-            currentUserBadge.setText("Active: " + user.getFullName());
+            currentUserBadge.setText("User: " + user.getFullName());
         } else {
-            currentUserBadge.setText("Active: None");
+            currentUserBadge.setText("User: None");
         }
 
         for (UserChangeListener listener : listeners) {

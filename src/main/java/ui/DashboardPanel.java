@@ -19,7 +19,7 @@ public class DashboardPanel extends JPanel {
     private final LoanService loanService;
     private final UserSelectionManager selectionManager;
 
-    private JComboBox<User> userDropdown;
+    private JLabel accountBadgeLabel;
     private JLabel totalDebtLabel;
     private JLabel activeLoansLabel;
     private JLabel totalEmiLabel;
@@ -45,7 +45,6 @@ public class DashboardPanel extends JPanel {
 
         // Register to receive updates when user changes externally
         selectionManager.registerListener(user -> {
-            updateUserDropdownSelection(user);
             refreshData(user);
         });
     }
@@ -69,37 +68,28 @@ public class DashboardPanel extends JPanel {
         titlePanel.add(titleLabel);
         titlePanel.add(subtitleLabel);
 
-        // User Selection Box
-        JPanel switcherPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        switcherPanel.setOpaque(false);
+        // User Badge & Refresh Box
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setOpaque(false);
 
-        JLabel switchLabel = new JLabel("Active Account:");
-        switchLabel.setFont(UITheme.FONT_BOLD);
-        switchLabel.setForeground(UITheme.TEXT_MAIN);
-
-        userDropdown = new JComboBox<>();
-        userDropdown.setFont(UITheme.FONT_REGULAR);
-        userDropdown.setBackground(Color.WHITE);
-        userDropdown.setPreferredSize(new Dimension(240, 36));
-
-        loadUsersIntoDropdown();
-
-        userDropdown.addActionListener(e -> {
-            User selected = (User) userDropdown.getSelectedItem();
-            if (selected != null && selectionManager != null) {
-                selectionManager.selectUser(selected);
-            }
-        });
+        accountBadgeLabel = new JLabel("User: None");
+        accountBadgeLabel.setFont(UITheme.FONT_BOLD);
+        accountBadgeLabel.setForeground(UITheme.TEXT_MAIN);
+        accountBadgeLabel.setBackground(Color.WHITE);
+        accountBadgeLabel.setOpaque(true);
+        accountBadgeLabel.setBorder(new CompoundBorder(
+                new LineBorder(UITheme.BORDER_COLOR, 1, true),
+                new EmptyBorder(8, 14, 8, 14)
+        ));
 
         JButton refreshBtn = UITheme.createStyledButton("Refresh", UITheme.BG_DARK, Color.WHITE);
         refreshBtn.addActionListener(e -> refreshData(selectionManager.getCurrentUser()));
 
-        switcherPanel.add(switchLabel);
-        switcherPanel.add(userDropdown);
-        switcherPanel.add(refreshBtn);
+        rightPanel.add(accountBadgeLabel);
+        rightPanel.add(refreshBtn);
 
         topPanel.add(titlePanel, BorderLayout.WEST);
-        topPanel.add(switcherPanel, BorderLayout.EAST);
+        topPanel.add(rightPanel, BorderLayout.EAST);
 
         // --- Center Content: KPI Cards + Portfolio Table ---
         JPanel contentPanel = new JPanel(new BorderLayout(0, 20));
@@ -189,41 +179,9 @@ public class DashboardPanel extends JPanel {
         return card;
     }
 
-    public void loadUsersIntoDropdown() {
-        userDropdown.removeAllItems();
-        List<User> users = loanService.getAllUsers();
-        for (User u : users) {
-            userDropdown.addItem(u);
-        }
-    }
-
-    private void updateUserDropdownSelection(User user) {
-        if (user == null) return;
-        boolean found = false;
-        for (int i = 0; i < userDropdown.getItemCount(); i++) {
-            User item = userDropdown.getItemAt(i);
-            if (item != null && item.getUserId() == user.getUserId()) {
-                if (userDropdown.getSelectedIndex() != i) {
-                    userDropdown.setSelectedIndex(i);
-                }
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            loadUsersIntoDropdown();
-            for (int i = 0; i < userDropdown.getItemCount(); i++) {
-                User item = userDropdown.getItemAt(i);
-                if (item != null && item.getUserId() == user.getUserId()) {
-                    userDropdown.setSelectedIndex(i);
-                    break;
-                }
-            }
-        }
-    }
-
     public void refreshData(User user) {
         if (user == null) {
+            accountBadgeLabel.setText("User: None");
             totalDebtLabel.setText("₹0.00");
             activeLoansLabel.setText("0");
             totalEmiLabel.setText("₹0.00");
@@ -231,6 +189,8 @@ public class DashboardPanel extends JPanel {
             tableModel.setRowCount(0);
             return;
         }
+
+        accountBadgeLabel.setText("User: " + user.getFullName());
 
         double totalDebt = loanService.getTotalDebt(user.getUserId());
         int activeCount = loanService.getActiveLoansCount(user.getUserId());
