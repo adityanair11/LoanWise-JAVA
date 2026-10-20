@@ -140,7 +140,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         });
 
         // Trigger Button and Progress
-        simulateBtn = UITheme.createStyledButton("⚡ Simulate Acceleration Savings", UITheme.ACCENT_BLUE, Color.WHITE);
+        simulateBtn = UITheme.createStyledButton("Simulate Acceleration Savings", UITheme.ACCENT_BLUE, Color.WHITE);
         simulateBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         simulateBtn.addActionListener(e -> triggerSimulation());
 

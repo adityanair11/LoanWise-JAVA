@@ -79,7 +79,7 @@ public class SchedulePanel extends JPanel implements UserChangeListener {
 
         loanSelector.addActionListener(e -> generateAndDisplaySchedule());
 
-        exportCsvBtn = UITheme.createStyledButton("📥 Export to CSV", UITheme.ACCENT_GREEN, Color.WHITE);
+        exportCsvBtn = UITheme.createStyledButton("Export to CSV", UITheme.ACCENT_GREEN, Color.WHITE);
         exportCsvBtn.addActionListener(e -> exportScheduleToCsv());
 
         actions.add(selectLabel);

@@ -62,10 +62,10 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setOpaque(false);
 
-        JButton addLoanBtn = UITheme.createStyledButton("+ Add New Loan", UITheme.ACCENT_BLUE, Color.WHITE);
-        JButton deleteLoanBtn = UITheme.createStyledButton("✕ Delete Loan", UITheme.ACCENT_RED, Color.WHITE);
-        JButton prepayBtn = UITheme.createStyledButton("⚡ Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
-        JButton refreshBtn = UITheme.createStyledButton("↻ Refresh", UITheme.BG_DARK, Color.WHITE);
+        JButton addLoanBtn = UITheme.createStyledButton("Add New Loan", UITheme.ACCENT_BLUE, Color.WHITE);
+        JButton deleteLoanBtn = UITheme.createStyledButton("Delete Loan", UITheme.ACCENT_RED, Color.WHITE);
+        JButton prepayBtn = UITheme.createStyledButton("Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
+        JButton refreshBtn = UITheme.createStyledButton("Refresh", UITheme.BG_DARK, Color.WHITE);
 
         addLoanBtn.addActionListener(e -> showAddLoanDialog());
         deleteLoanBtn.addActionListener(e -> handleDeleteLoan());

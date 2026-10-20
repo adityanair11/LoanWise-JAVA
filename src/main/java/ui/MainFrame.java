@@ -1,5 +1,6 @@
 package ui;
 
+import com.formdev.flatlaf.FlatLightLaf;
 import db.DBConnection;
 import model.User;
 import service.LoanService;
@@ -39,8 +40,8 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         setupInitialUser();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1280, 820);
-        setMinimumSize(new Dimension(1024, 680));
+        setSize(1320, 840);
+        setMinimumSize(new Dimension(1080, 720));
         setLocationRelativeTo(null);
     }
 
@@ -50,17 +51,17 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         // --- Top Header Bar ---
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setBackground(UITheme.BG_DARK);
-        topHeader.setBorder(new EmptyBorder(14, 24, 14, 24));
+        topHeader.setBorder(new EmptyBorder(16, 24, 16, 24));
 
         JPanel brandPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
         brandPanel.setOpaque(false);
 
-        JLabel logoLabel = new JLabel("💰 LoanWise");
-        logoLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        JLabel logoLabel = new JLabel("LoanWise");
+        logoLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
         logoLabel.setForeground(Color.WHITE);
 
         JLabel tagLabel = new JLabel("|  Personal Debt Prepayment & Payoff Acceleration Engine");
-        tagLabel.setFont(UITheme.FONT_REGULAR);
+        tagLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
         tagLabel.setForeground(new Color(148, 163, 184));
 
         brandPanel.add(logoLabel);
@@ -70,16 +71,16 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         statusPanel.setOpaque(false);
 
         boolean isDbConnected = DBConnection.getInstance().isConnected();
-        connectionStatusLabel = new JLabel(isDbConnected ? "● DB Connected (MySQL)" : "○ DB Offline");
-        connectionStatusLabel.setFont(UITheme.FONT_BOLD);
+        connectionStatusLabel = new JLabel(isDbConnected ? "[DB Connected]" : "[DB Offline]");
+        connectionStatusLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         connectionStatusLabel.setForeground(isDbConnected ? new Color(52, 211, 153) : new Color(248, 113, 113));
 
-        currentUserBadge = new JLabel("User: None");
-        currentUserBadge.setFont(UITheme.FONT_BOLD);
+        currentUserBadge = new JLabel("Active: None");
+        currentUserBadge.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         currentUserBadge.setForeground(Color.WHITE);
         currentUserBadge.setBorder(new CompoundBorder(
                 new LineBorder(new Color(51, 65, 85), 1, true),
-                new EmptyBorder(4, 10, 4, 10)
+                new EmptyBorder(6, 12, 6, 12)
         ));
 
         statusPanel.add(connectionStatusLabel);
@@ -90,8 +91,13 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
 
         // --- Navigation Tabs ---
         JTabbedPane tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 14));
+        tabbedPane.setFont(UITheme.FONT_TAB);
         tabbedPane.setBackground(Color.WHITE);
+
+        // Comfortable padding for tabs
+        UIManager.put("TabbedPane.tabInsets", new Insets(10, 20, 10, 20));
+        UIManager.put("TabbedPane.selectedBackground", Color.WHITE);
+        UIManager.put("TabbedPane.hoverColor", new Color(241, 245, 249));
 
         dashboardPanel = new DashboardPanel(loanService, this);
         loanPanel = new LoanPanel(loanService, this);
@@ -99,13 +105,13 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         schedulePanel = new SchedulePanel(loanService, this);
         auditPanel = new AuditPanel(loanService);
 
-        tabbedPane.addTab("📊 Portfolio Dashboard", dashboardPanel);
-        tabbedPane.addTab("💳 Loan Accounts", loanPanel);
-        tabbedPane.addTab("⚡ Prepayment Optimizer", optimizerPanel);
-        tabbedPane.addTab("📅 Amortization Schedule", schedulePanel);
-        tabbedPane.addTab("📜 Audit Ledger", auditPanel);
+        tabbedPane.addTab("  Dashboard  ", dashboardPanel);
+        tabbedPane.addTab("  My Loans  ", loanPanel);
+        tabbedPane.addTab("  Payoff Optimizer  ", optimizerPanel);
+        tabbedPane.addTab("  Amortization  ", schedulePanel);
+        tabbedPane.addTab("  Audit Ledger  ", auditPanel);
 
-        // Listen for tab switches to auto-refresh current views
+        // Tab selection listener to keep active views synchronized
         tabbedPane.addChangeListener(e -> {
             int selectedIndex = tabbedPane.getSelectedIndex();
             switch (selectedIndex) {
@@ -155,14 +161,12 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
     }
 
     public static void main(String[] args) {
-        // Apply modern Look & Feel
+        // Set up FlatLaf Modern Look & Feel
         try {
-            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
+            FlatLightLaf.setup();
+            UIManager.put("TabbedPane.tabInsets", new Insets(10, 20, 10, 20));
+            UIManager.put("Table.rowHeight", 30);
+            UIManager.put("TableHeader.height", 32);
         } catch (Exception e) {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());

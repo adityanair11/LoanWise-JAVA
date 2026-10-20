@@ -54,7 +54,7 @@ public class AuditPanel extends JPanel {
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actionPanel.setOpaque(false);
 
-        JButton refreshBtn = UITheme.createStyledButton("↻ Refresh Ledger", UITheme.BG_DARK, Color.WHITE);
+        JButton refreshBtn = UITheme.createStyledButton("Refresh Ledger", UITheme.BG_DARK, Color.WHITE);
         refreshBtn.addActionListener(e -> refreshAuditLogs());
 
         actionPanel.add(refreshBtn);

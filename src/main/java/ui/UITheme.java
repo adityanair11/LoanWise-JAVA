@@ -21,12 +21,13 @@ public class UITheme {
     public static final Color ACCENT_RED = new Color(225, 29, 72); // Rose 600
     public static final Color BORDER_COLOR = new Color(226, 232, 240); // Slate 200
 
-    public static final Font FONT_TITLE = new Font("SansSerif", Font.BOLD, 22);
-    public static final Font FONT_HEADER = new Font("SansSerif", Font.BOLD, 16);
-    public static final Font FONT_BOLD = new Font("SansSerif", Font.BOLD, 13);
-    public static final Font FONT_REGULAR = new Font("SansSerif", Font.PLAIN, 13);
-    public static final Font FONT_SMALL = new Font("SansSerif", Font.PLAIN, 11);
-    public static final Font FONT_KPI_VAL = new Font("SansSerif", Font.BOLD, 20);
+    public static final Font FONT_TITLE = new Font(Font.SANS_SERIF, Font.BOLD, 22);
+    public static final Font FONT_HEADER = new Font(Font.SANS_SERIF, Font.BOLD, 16);
+    public static final Font FONT_TAB = new Font(Font.SANS_SERIF, Font.BOLD, 14);
+    public static final Font FONT_BOLD = new Font(Font.SANS_SERIF, Font.BOLD, 13);
+    public static final Font FONT_REGULAR = new Font(Font.SANS_SERIF, Font.PLAIN, 13);
+    public static final Font FONT_SMALL = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
+    public static final Font FONT_KPI_VAL = new Font(Font.SANS_SERIF, Font.BOLD, 20);
 
     private static final DecimalFormat CURRENCY_FORMAT = new DecimalFormat("₹#,##,##0.00");
     private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("#,##0");
@@ -53,6 +54,7 @@ public class UITheme {
         button.setFocusPainted(false);
         button.setFont(FONT_BOLD);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.putClientProperty("JButton.buttonType", "roundRect");
         button.setBorder(new CompoundBorder(
                 new LineBorder(background.darker(), 1, true),
                 new EmptyBorder(8, 16, 8, 16)

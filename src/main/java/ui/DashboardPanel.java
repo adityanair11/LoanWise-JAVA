@@ -91,7 +91,7 @@ public class DashboardPanel extends JPanel {
             }
         });
 
-        JButton refreshBtn = UITheme.createStyledButton("↻ Refresh", UITheme.BG_DARK, Color.WHITE);
+        JButton refreshBtn = UITheme.createStyledButton("Refresh", UITheme.BG_DARK, Color.WHITE);
         refreshBtn.addActionListener(e -> refreshData(selectionManager.getCurrentUser()));
 
         switcherPanel.add(switchLabel);
