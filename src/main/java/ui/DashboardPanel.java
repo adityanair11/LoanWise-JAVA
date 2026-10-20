@@ -195,20 +195,29 @@ public class DashboardPanel extends JPanel {
         for (User u : users) {
             userDropdown.addItem(u);
         }
-        if (!users.isEmpty() && selectionManager.getCurrentUser() == null) {
-            selectionManager.selectUser(users.get(0));
-        }
     }
 
     private void updateUserDropdownSelection(User user) {
         if (user == null) return;
+        boolean found = false;
         for (int i = 0; i < userDropdown.getItemCount(); i++) {
             User item = userDropdown.getItemAt(i);
             if (item != null && item.getUserId() == user.getUserId()) {
                 if (userDropdown.getSelectedIndex() != i) {
                     userDropdown.setSelectedIndex(i);
                 }
+                found = true;
                 break;
+            }
+        }
+        if (!found) {
+            loadUsersIntoDropdown();
+            for (int i = 0; i < userDropdown.getItemCount(); i++) {
+                User item = userDropdown.getItemAt(i);
+                if (item != null && item.getUserId() == user.getUserId()) {
+                    userDropdown.setSelectedIndex(i);
+                    break;
+                }
             }
         }
     }

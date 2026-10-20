@@ -83,8 +83,13 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
                 new EmptyBorder(6, 12, 6, 12)
         ));
 
+        JButton signOutBtn = UITheme.createStyledButton("Sign Out", UITheme.ACCENT_RED, Color.WHITE);
+        signOutBtn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        signOutBtn.addActionListener(e -> handleSignOut());
+
         statusPanel.add(connectionStatusLabel);
         statusPanel.add(currentUserBadge);
+        statusPanel.add(signOutBtn);
 
         topHeader.add(brandPanel, BorderLayout.WEST);
         topHeader.add(statusPanel, BorderLayout.EAST);
@@ -127,11 +132,40 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         add(tabbedPane, BorderLayout.CENTER);
     }
 
-    private void setupInitialUser() {
-        List<User> users = loanService.getAllUsers();
-        if (!users.isEmpty()) {
-            selectUser(users.get(0));
+    private void handleSignOut() {
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to sign out of your account?",
+                "Confirm Sign Out",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            setVisible(false);
+            currentUser = null;
+            promptAuthenticationAndShow();
         }
+    }
+
+    /**
+     * Prompts the user with the AuthDialog before presenting the workspace.
+     */
+    public void promptAuthenticationAndShow() {
+        AuthDialog authDialog = new AuthDialog(this, loanService);
+        authDialog.setVisible(true);
+
+        User authUser = authDialog.getAuthenticatedUser();
+        if (authUser == null) {
+            System.exit(0);
+        } else {
+            selectUser(authUser);
+            setVisible(true);
+        }
+    }
+
+    private void setupInitialUser() {
+        // Will be set by promptAuthenticationAndShow()
     }
 
     @Override
@@ -176,7 +210,7 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
 
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();
-            frame.setVisible(true);
+            frame.promptAuthenticationAndShow();
         });
     }
 }
