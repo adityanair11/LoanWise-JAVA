@@ -51,6 +51,26 @@ public class LoanService {
         return userDAO.findById(userId);
     }
 
+    public User getUserByEmail(String email) {
+        return userDAO.findByEmail(email);
+    }
+
+    public User registerUser(String fullName, String email, double monthlyIncome, String plainPassword) throws IllegalArgumentException {
+        User user = userDAO.registerUser(fullName, email, monthlyIncome, plainPassword);
+        if (user != null) {
+            auditLogDAO.log(null, "USER_REGISTERED", "New user registered: " + user.getFullName() + " (" + user.getEmail() + ")");
+        }
+        return user;
+    }
+
+    public User authenticateUser(String email, String plainPassword) {
+        User user = userDAO.authenticateUser(email, plainPassword);
+        if (user != null) {
+            auditLogDAO.log(null, "USER_LOGIN", "User authenticated: " + user.getFullName() + " (" + user.getEmail() + ")");
+        }
+        return user;
+    }
+
     // --- Loan Operations ---
 
     public List<Loan> getActiveLoansByUserId(int userId) {

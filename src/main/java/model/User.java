@@ -5,6 +5,7 @@ public class User {
     private String fullName;
     private String email;
     private double monthlyIncome;
+    private String passwordHash;
 
     public User() {
     }
@@ -16,10 +17,25 @@ public class User {
         this.monthlyIncome = monthlyIncome;
     }
 
+    public User(int userId, String fullName, String email, double monthlyIncome, String passwordHash) {
+        this.userId = userId;
+        this.fullName = fullName;
+        this.email = email;
+        this.monthlyIncome = monthlyIncome;
+        this.passwordHash = passwordHash;
+    }
+
     public User(String fullName, String email, double monthlyIncome) {
         this.fullName = fullName;
         this.email = email;
         this.monthlyIncome = monthlyIncome;
+    }
+
+    public User(String fullName, String email, double monthlyIncome, String passwordHash) {
+        this.fullName = fullName;
+        this.email = email;
+        this.monthlyIncome = monthlyIncome;
+        this.passwordHash = passwordHash;
     }
 
     public int getUserId() {
@@ -52,6 +68,14 @@ public class User {
 
     public void setMonthlyIncome(double monthlyIncome) {
         this.monthlyIncome = monthlyIncome;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     @Override

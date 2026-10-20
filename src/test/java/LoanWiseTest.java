@@ -126,6 +126,17 @@ public class LoanWiseTest {
     }
 
     @Test
+    @DisplayName("Verify BCrypt password hashing and authentication logic")
+    public void testBCryptAuthentication() {
+        String rawPassword = "Password@123";
+        String hashed = org.mindrot.jbcrypt.BCrypt.hashpw(rawPassword, org.mindrot.jbcrypt.BCrypt.gensalt(10));
+
+        assertNotNull(hashed);
+        assertTrue(org.mindrot.jbcrypt.BCrypt.checkpw(rawPassword, hashed), "Valid password must verify against hash");
+        assertFalse(org.mindrot.jbcrypt.BCrypt.checkpw("WrongPassword", hashed), "Incorrect password must not match hash");
+    }
+
+    @Test
     @DisplayName("Verify InvalidPrepaymentException creation and payload")
     public void testInvalidPrepaymentException() {
         InvalidPrepaymentException ex = new InvalidPrepaymentException("Test prepayment exception", 50000.0, 20000.0);

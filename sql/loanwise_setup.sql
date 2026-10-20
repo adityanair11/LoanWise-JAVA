@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS user_account (
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     monthly_income DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    password_hash VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -168,11 +169,13 @@ DELIMITER ;
 -- Seed Data
 -- =====================================================================
 
-INSERT INTO user_account (user_id, full_name, email, monthly_income) VALUES
-(1, 'Aarav Sharma', 'aarav.sharma@example.com', 125000.00),
-(2, 'Diya Patel', 'diya.patel@example.com', 95000.00),
-(3, 'Kabir Mehta', 'kabir.mehta@example.com', 160000.00)
-ON DUPLICATE KEY UPDATE full_name=VALUES(full_name), monthly_income=VALUES(monthly_income);
+-- Default demo accounts (Default password for all demo accounts: Password@123)
+-- BCrypt hash for "Password@123": $2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S
+INSERT INTO user_account (user_id, full_name, email, monthly_income, password_hash) VALUES
+(1, 'Aarav Sharma', 'aarav.sharma@example.com', 125000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
+(2, 'Diya Patel', 'diya.patel@example.com', 95000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
+(3, 'Kabir Mehta', 'kabir.mehta@example.com', 160000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S')
+ON DUPLICATE KEY UPDATE full_name=VALUES(full_name), monthly_income=VALUES(monthly_income), password_hash=VALUES(password_hash);
 
 -- Loans for Aarav (User 1)
 INSERT INTO loan (loan_id, user_id, loan_name, lender_name, loan_type, principal_amount, outstanding_balance, annual_interest_rate, annual_rate_type, tenure_months, start_date, due_day, loan_status)
