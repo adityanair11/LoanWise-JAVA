@@ -15,6 +15,8 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -29,6 +31,8 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
     private JRadioButton avalancheRadio;
     private JRadioButton snowballRadio;
     private JSlider extraPaymentSlider;
+    private JTextField extraPaymentField;
+    private boolean isUpdatingFromText = false;
     private JLabel sliderValueLabel;
     private JButton simulateBtn;
     private JProgressBar progressBar;
@@ -115,11 +119,32 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         strategyExplanationLabel.setForeground(UITheme.TEXT_MUTED);
         strategyExplanationLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Prepayment Slider
+        // Prepayment Slider & Direct Numeric Input Header
+        JPanel budgetHeaderPanel = new JPanel(new BorderLayout(8, 0));
+        budgetHeaderPanel.setOpaque(false);
+        budgetHeaderPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        budgetHeaderPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JLabel sliderTitle = new JLabel("Extra Monthly Prepayment Budget (₹):");
         sliderTitle.setFont(UITheme.FONT_BOLD);
         sliderTitle.setForeground(UITheme.TEXT_MAIN);
-        sliderTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        extraPaymentField = new JTextField("5000", 7);
+        extraPaymentField.setFont(UITheme.FONT_BOLD);
+        extraPaymentField.setHorizontalAlignment(JTextField.RIGHT);
+        extraPaymentField.setPreferredSize(new Dimension(110, 32));
+        extraPaymentField.putClientProperty("JTextField.placeholderText", "0 - 50000");
+
+        extraPaymentField.addActionListener(e -> syncFromTextField());
+        extraPaymentField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                syncFromTextField();
+            }
+        });
+
+        budgetHeaderPanel.add(sliderTitle, BorderLayout.WEST);
+        budgetHeaderPanel.add(extraPaymentField, BorderLayout.EAST);
 
         extraPaymentSlider = new JSlider(0, 50000, 5000);
         extraPaymentSlider.setMajorTickSpacing(10000);
@@ -135,8 +160,11 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         sliderValueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         extraPaymentSlider.addChangeListener(e -> {
-            int val = extraPaymentSlider.getValue();
-            sliderValueLabel.setText("Selected Extra Monthly Payment: " + UITheme.formatCurrency(val));
+            if (!isUpdatingFromText) {
+                int val = extraPaymentSlider.getValue();
+                extraPaymentField.setText(String.valueOf(val));
+                sliderValueLabel.setText("Selected Extra Monthly Payment: " + UITheme.formatCurrency(val));
+            }
         });
 
         // Trigger Button and Progress
@@ -156,7 +184,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         configBody.add(Box.createVerticalStrut(4));
         configBody.add(strategyExplanationLabel);
         configBody.add(Box.createVerticalStrut(20));
-        configBody.add(sliderTitle);
+        configBody.add(budgetHeaderPanel);
         configBody.add(Box.createVerticalStrut(6));
         configBody.add(extraPaymentSlider);
         configBody.add(Box.createVerticalStrut(8));
@@ -289,7 +317,32 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         }
     }
 
+    private void syncFromTextField() {
+        String text = extraPaymentField.getText().replaceAll("[^0-9]", "").trim();
+        int val = 0;
+        if (!text.isEmpty()) {
+            try {
+                val = Integer.parseInt(text);
+            } catch (NumberFormatException e) {
+                val = extraPaymentSlider.getValue();
+            }
+        }
+        // Clamp strictly within slider min/max bounds (0 to 50000)
+        val = Math.max(0, Math.min(50000, val));
+
+        isUpdatingFromText = true;
+        try {
+            extraPaymentSlider.setValue(val);
+            extraPaymentField.setText(String.valueOf(val));
+            sliderValueLabel.setText("Selected Extra Monthly Payment: " + UITheme.formatCurrency(val));
+        } finally {
+            isUpdatingFromText = false;
+        }
+    }
+
     private void triggerSimulation() {
+        syncFromTextField();
+
         User user = selectionManager.getCurrentUser();
         if (user == null) {
             JOptionPane.showMessageDialog(this, "Please select an active user profile first.", "Notice", JOptionPane.WARNING_MESSAGE);
