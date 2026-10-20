@@ -93,7 +93,7 @@ public class AuthDialog extends JDialog {
         emailLabel.setForeground(UITheme.TEXT_MAIN);
         emailLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        loginEmailField = new JTextField("aarav.sharma@example.com");
+        loginEmailField = new JTextField("aarav@example.com");
         loginEmailField.setFont(UITheme.FONT_REGULAR);
         loginEmailField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         loginEmailField.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -135,7 +135,7 @@ public class AuthDialog extends JDialog {
         demoTitle.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 11));
         demoTitle.setForeground(UITheme.TEXT_MAIN);
 
-        JLabel demoHint = new JLabel("<html>• Aarav: aarav.sharma@example.com<br>• Diya: diya.patel@example.com<br>• Kabir: kabir.mehta@example.com</html>");
+        JLabel demoHint = new JLabel("<html>• Aarav: aarav@example.com<br>• Diya: diya@example.com<br>• Kabir: kabir@example.com</html>");
         demoHint.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         demoHint.setForeground(UITheme.TEXT_MUTED);
 

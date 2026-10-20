@@ -172,9 +172,9 @@ DELIMITER ;
 -- Default demo accounts (Default password for all demo accounts: Password@123)
 -- BCrypt hash for "Password@123": $2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S
 INSERT INTO user_account (user_id, full_name, email, monthly_income, password_hash) VALUES
-(1, 'Aarav Sharma', 'aarav.sharma@example.com', 125000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
-(2, 'Diya Patel', 'diya.patel@example.com', 95000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
-(3, 'Kabir Mehta', 'kabir.mehta@example.com', 160000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S')
+(1, 'Aarav Sharma', 'aarav@example.com', 125000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
+(2, 'Diya Patil', 'diya@example.com', 95000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S'),
+(3, 'Kabir Mehta', 'kabir@example.com', 160000.00, '$2a$10$sX8J6.7O40D3i5yq9z1N9.P3nEcmV3k1xWf30T8G9gG0QkO9m6g9S')
 ON DUPLICATE KEY UPDATE full_name=VALUES(full_name), monthly_income=VALUES(monthly_income), password_hash=VALUES(password_hash);
 
 -- Loans for Aarav (User 1)

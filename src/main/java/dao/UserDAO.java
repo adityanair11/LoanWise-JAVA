@@ -45,6 +45,12 @@ public class UserDAO {
                     System.out.println("[UserDAO] Updated default demo passwords for " + updated + " accounts.");
                 }
             }
+
+            String updateDemo = "UPDATE user_account SET password_hash = ? WHERE LOWER(email) IN ('aarav@example.com', 'diya@example.com', 'kabir@example.com') AND (password_hash IS NULL OR password_hash NOT LIKE '$2%')";
+            try (PreparedStatement stmt = conn.prepareStatement(updateDemo)) {
+                stmt.setString(1, demoHash);
+                stmt.executeUpdate();
+            }
         } catch (SQLException e) {
             System.err.println("[UserDAO] Warning ensuring password schema: " + e.getMessage());
         }
