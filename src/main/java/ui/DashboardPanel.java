@@ -1,0 +1,257 @@
+package ui;
+
+import model.Loan;
+import model.User;
+import service.EMICalculator;
+import service.LoanService;
+
+import javax.swing.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
+
+public class DashboardPanel extends JPanel {
+
+    private final LoanService loanService;
+    private final UserSelectionManager selectionManager;
+
+    private JComboBox<User> userDropdown;
+    private JLabel totalDebtLabel;
+    private JLabel activeLoansLabel;
+    private JLabel totalEmiLabel;
+    private JLabel monthlyIncomeLabel;
+    private JTable portfolioTable;
+    private DefaultTableModel tableModel;
+
+    public interface UserSelectionManager {
+        User getCurrentUser();
+        void selectUser(User user);
+        void registerListener(UserChangeListener listener);
+    }
+
+    public DashboardPanel(LoanService loanService, UserSelectionManager selectionManager) {
+        this.loanService = loanService;
+        this.selectionManager = selectionManager;
+
+        setLayout(new BorderLayout(16, 16));
+        setBackground(UITheme.BG_LIGHT);
+        setBorder(new EmptyBorder(20, 24, 20, 24));
+
+        initComponents();
+
+        // Register to receive updates when user changes externally
+        selectionManager.registerListener(user -> {
+            updateUserDropdownSelection(user);
+            refreshData(user);
+        });
+    }
+
+    private void initComponents() {
+        // --- Top Bar: User Switcher & Header ---
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+
+        JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 4));
+        titlePanel.setOpaque(false);
+
+        JLabel titleLabel = new JLabel("Personal Debt Portfolio Overview");
+        titleLabel.setFont(UITheme.FONT_TITLE);
+        titleLabel.setForeground(UITheme.TEXT_MAIN);
+
+        JLabel subtitleLabel = new JLabel("Monitor active debt exposures, monthly commitments, and portfolio velocity");
+        subtitleLabel.setFont(UITheme.FONT_REGULAR);
+        subtitleLabel.setForeground(UITheme.TEXT_MUTED);
+
+        titlePanel.add(titleLabel);
+        titlePanel.add(subtitleLabel);
+
+        // User Selection Box
+        JPanel switcherPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        switcherPanel.setOpaque(false);
+
+        JLabel switchLabel = new JLabel("Active Account:");
+        switchLabel.setFont(UITheme.FONT_BOLD);
+        switchLabel.setForeground(UITheme.TEXT_MAIN);
+
+        userDropdown = new JComboBox<>();
+        userDropdown.setFont(UITheme.FONT_REGULAR);
+        userDropdown.setBackground(Color.WHITE);
+        userDropdown.setPreferredSize(new Dimension(240, 36));
+
+        loadUsersIntoDropdown();
+
+        userDropdown.addActionListener(e -> {
+            User selected = (User) userDropdown.getSelectedItem();
+            if (selected != null && selectionManager != null) {
+                selectionManager.selectUser(selected);
+            }
+        });
+
+        JButton refreshBtn = UITheme.createStyledButton("↻ Refresh", UITheme.BG_DARK, Color.WHITE);
+        refreshBtn.addActionListener(e -> refreshData(selectionManager.getCurrentUser()));
+
+        switcherPanel.add(switchLabel);
+        switcherPanel.add(userDropdown);
+        switcherPanel.add(refreshBtn);
+
+        topPanel.add(titlePanel, BorderLayout.WEST);
+        topPanel.add(switcherPanel, BorderLayout.EAST);
+
+        // --- Center Content: KPI Cards + Portfolio Table ---
+        JPanel contentPanel = new JPanel(new BorderLayout(0, 20));
+        contentPanel.setOpaque(false);
+
+        // 4 KPI Cards Grid
+        JPanel kpiGrid = new JPanel(new GridLayout(1, 4, 16, 0));
+        kpiGrid.setOpaque(false);
+
+        totalDebtLabel = new JLabel("₹0.00");
+        activeLoansLabel = new JLabel("0");
+        totalEmiLabel = new JLabel("₹0.00");
+        monthlyIncomeLabel = new JLabel("₹0.00");
+
+        kpiGrid.add(createKpiCard("TOTAL ACTIVE DEBT", totalDebtLabel, UITheme.ACCENT_RED, "Across all lenders"));
+        kpiGrid.add(createKpiCard("ACTIVE LOANS COUNT", activeLoansLabel, UITheme.ACCENT_BLUE, "Outstanding accounts"));
+        kpiGrid.add(createKpiCard("MONTHLY EMI COMMITMENT", totalEmiLabel, UITheme.ACCENT_ORANGE, "Base scheduled outflow"));
+        kpiGrid.add(createKpiCard("MONTHLY INCOME", monthlyIncomeLabel, UITheme.ACCENT_GREEN, "Verified declared income"));
+
+        contentPanel.add(kpiGrid, BorderLayout.NORTH);
+
+        // Active Loans Table Card
+        JPanel tableCard = new JPanel(new BorderLayout(0, 10));
+        tableCard.setBackground(UITheme.CARD_BG);
+        tableCard.setBorder(UITheme.createCardBorder());
+
+        JLabel tableTitle = new JLabel("Active Loans Breakdown");
+        tableTitle.setFont(UITheme.FONT_HEADER);
+        tableTitle.setForeground(UITheme.TEXT_MAIN);
+
+        String[] columns = {"ID", "Loan Name", "Lender", "Category", "Principal (₹)", "Outstanding Balance (₹)", "Interest Rate", "Tenure (Mo)", "Est. Monthly EMI (₹)"};
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        portfolioTable = new JTable(tableModel);
+        portfolioTable.setRowHeight(32);
+        portfolioTable.setFont(UITheme.FONT_REGULAR);
+        portfolioTable.getTableHeader().setFont(UITheme.FONT_BOLD);
+        portfolioTable.getTableHeader().setBackground(new Color(241, 245, 249));
+        portfolioTable.getTableHeader().setForeground(UITheme.TEXT_MAIN);
+        portfolioTable.setGridColor(UITheme.BORDER_COLOR);
+        portfolioTable.setSelectionBackground(new Color(219, 234, 254));
+
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        portfolioTable.getColumnModel().getColumn(4).setCellRenderer(rightRenderer);
+        portfolioTable.getColumnModel().getColumn(5).setCellRenderer(rightRenderer);
+        portfolioTable.getColumnModel().getColumn(6).setCellRenderer(rightRenderer);
+        portfolioTable.getColumnModel().getColumn(8).setCellRenderer(rightRenderer);
+
+        JScrollPane scrollPane = new JScrollPane(portfolioTable);
+        scrollPane.setBorder(new LineBorder(UITheme.BORDER_COLOR, 1));
+
+        tableCard.add(tableTitle, BorderLayout.NORTH);
+        tableCard.add(scrollPane, BorderLayout.CENTER);
+
+        contentPanel.add(tableCard, BorderLayout.CENTER);
+
+        add(topPanel, BorderLayout.NORTH);
+        add(contentPanel, BorderLayout.CENTER);
+    }
+
+    private JPanel createKpiCard(String labelText, JLabel valueLabel, Color accentColor, String subtext) {
+        JPanel card = new JPanel(new BorderLayout(0, 6));
+        card.setBackground(UITheme.CARD_BG);
+        card.setBorder(UITheme.createCardBorder());
+
+        JLabel header = new JLabel(labelText);
+        header.setFont(UITheme.FONT_SMALL);
+        header.setForeground(UITheme.TEXT_MUTED);
+
+        valueLabel.setFont(UITheme.FONT_KPI_VAL);
+        valueLabel.setForeground(accentColor);
+
+        JLabel footer = new JLabel(subtext);
+        footer.setFont(UITheme.FONT_SMALL);
+        footer.setForeground(UITheme.TEXT_MUTED);
+
+        card.add(header, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
+        card.add(footer, BorderLayout.SOUTH);
+
+        return card;
+    }
+
+    public void loadUsersIntoDropdown() {
+        userDropdown.removeAllItems();
+        List<User> users = loanService.getAllUsers();
+        for (User u : users) {
+            userDropdown.addItem(u);
+        }
+        if (!users.isEmpty() && selectionManager.getCurrentUser() == null) {
+            selectionManager.selectUser(users.get(0));
+        }
+    }
+
+    private void updateUserDropdownSelection(User user) {
+        if (user == null) return;
+        for (int i = 0; i < userDropdown.getItemCount(); i++) {
+            User item = userDropdown.getItemAt(i);
+            if (item != null && item.getUserId() == user.getUserId()) {
+                if (userDropdown.getSelectedIndex() != i) {
+                    userDropdown.setSelectedIndex(i);
+                }
+                break;
+            }
+        }
+    }
+
+    public void refreshData(User user) {
+        if (user == null) {
+            totalDebtLabel.setText("₹0.00");
+            activeLoansLabel.setText("0");
+            totalEmiLabel.setText("₹0.00");
+            monthlyIncomeLabel.setText("₹0.00");
+            tableModel.setRowCount(0);
+            return;
+        }
+
+        double totalDebt = loanService.getTotalDebt(user.getUserId());
+        int activeCount = loanService.getActiveLoansCount(user.getUserId());
+        double totalEMI = loanService.getTotalMonthlyEMI(user.getUserId());
+        double income = user.getMonthlyIncome();
+
+        totalDebtLabel.setText(UITheme.formatCurrency(totalDebt));
+        activeLoansLabel.setText(String.valueOf(activeCount));
+        totalEmiLabel.setText(UITheme.formatCurrency(totalEMI));
+        monthlyIncomeLabel.setText(UITheme.formatCurrency(income));
+
+        tableModel.setRowCount(0);
+        List<Loan> loans = loanService.getActiveLoansByUserId(user.getUserId());
+        for (Loan l : loans) {
+            double emi = EMICalculator.calculateEMI(
+                    l.getOutstandingBalance(),
+                    l.getAnnualInterestRate(),
+                    l.getTenureMonths() > 0 ? l.getTenureMonths() : 12
+            );
+            tableModel.addRow(new Object[]{
+                    l.getLoanId(),
+                    l.getLoanName(),
+                    l.getLenderName(),
+                    l.getLoanType(),
+                    UITheme.formatCurrency(l.getPrincipalAmount()),
+                    UITheme.formatCurrency(l.getOutstandingBalance()),
+                    String.format("%.2f%%", l.getAnnualInterestRate()),
+                    l.getTenureMonths(),
+                    UITheme.formatCurrency(emi)
+            });
+        }
+    }
+}
