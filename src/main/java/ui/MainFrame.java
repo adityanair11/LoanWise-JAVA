@@ -29,20 +29,28 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
     private AuditPanel auditPanel;
 
     public MainFrame() {
+        this(null);
+    }
+
+    public MainFrame(User authenticatedUser) {
         super("LoanWise — Loan Prepayment and Payoff Optimizer");
 
         this.loanService = new LoanService();
+        this.currentUser = authenticatedUser;
 
         // Ensure database schema and seed data are initialized
         loanService.initializeDatabaseSchema();
 
         initComponents();
-        setupInitialUser();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1320, 840);
         setMinimumSize(new Dimension(1080, 720));
         setLocationRelativeTo(null);
+
+        if (authenticatedUser != null) {
+            selectUser(authenticatedUser);
+        }
     }
 
     private void initComponents() {
@@ -142,30 +150,26 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
         );
 
         if (confirm == JOptionPane.YES_OPTION) {
-            setVisible(false);
-            currentUser = null;
-            promptAuthenticationAndShow();
+            this.dispose();
+            showAuthAndLaunch();
         }
     }
 
     /**
-     * Prompts the user with the AuthDialog before presenting the workspace.
+     * Prompts the user with the modal AuthDialog before constructing or displaying MainFrame.
      */
-    public void promptAuthenticationAndShow() {
-        AuthDialog authDialog = new AuthDialog(this, loanService);
+    public static void showAuthAndLaunch() {
+        AuthDialog authDialog = new AuthDialog(null);
+        authDialog.setModal(true);
         authDialog.setVisible(true);
 
         User authUser = authDialog.getAuthenticatedUser();
         if (authUser == null) {
             System.exit(0);
         } else {
-            selectUser(authUser);
-            setVisible(true);
+            MainFrame mainFrame = new MainFrame(authUser);
+            mainFrame.setVisible(true);
         }
-    }
-
-    private void setupInitialUser() {
-        // Will be set by promptAuthenticationAndShow()
     }
 
     @Override
@@ -208,9 +212,6 @@ public class MainFrame extends JFrame implements DashboardPanel.UserSelectionMan
             }
         }
 
-        SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame();
-            frame.promptAuthenticationAndShow();
-        });
+        SwingUtilities.invokeLater(MainFrame::showAuthAndLaunch);
     }
 }

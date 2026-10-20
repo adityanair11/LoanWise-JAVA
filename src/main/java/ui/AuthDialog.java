@@ -28,10 +28,15 @@ public class AuthDialog extends JDialog {
     private JPasswordField regPasswordField;
     private JLabel regErrorLabel;
 
+    public AuthDialog(Frame parent) {
+        this(parent, new LoanService());
+    }
+
     public AuthDialog(Frame parent, LoanService loanService) {
         super(parent, "LoanWise — Account Access", true);
         this.loanService = loanService;
 
+        setModal(true);
         initComponents();
 
         setSize(480, 560);
