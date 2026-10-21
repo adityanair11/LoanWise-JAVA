@@ -165,6 +165,40 @@ public class LoanWiseTest {
     }
 
     @Test
+    @DisplayName("Verify Amortization Scenario simulation with prepayment and rate changes")
+    public void testScenarioScheduleSimulation() {
+        double principal = 1000000.0;
+        double initialRate = 9.0;
+        int tenure = 120; // 10 years
+        LocalDate start = LocalDate.of(2024, 1, 1);
+
+        // Baseline schedule
+        List<model.AmortizationScheduleItem> baseline = EMICalculator.generateAmortizationSchedule(
+                principal, initialRate, tenure, start);
+        EMICalculator.ScheduleSummary baseSummary = new EMICalculator.ScheduleSummary(baseline);
+        assertEquals(120, baseSummary.getTotalMonths());
+        assertTrue(baseSummary.getTotalInterest() > 0);
+
+        // Scenario 1: Prepayment of 5,000/mo from month 1
+        List<model.AmortizationScheduleItem> scenarioWithPrepay = EMICalculator.generateScenarioSchedule(
+                principal, initialRate, initialRate, 1, 5000.0, tenure, start);
+        EMICalculator.ScheduleSummary prepaySummary = new EMICalculator.ScheduleSummary(scenarioWithPrepay);
+
+        assertTrue(prepaySummary.getTotalMonths() < baseSummary.getTotalMonths(),
+                "Prepayments must reduce total payoff months");
+        assertTrue(prepaySummary.getTotalInterest() < baseSummary.getTotalInterest(),
+                "Prepayments must reduce total lifetime interest");
+
+        // Scenario 2: Rate hike from 9.0% to 11.5% without prepayment
+        List<model.AmortizationScheduleItem> scenarioRateHike = EMICalculator.generateScenarioSchedule(
+                principal, initialRate, 11.5, 1, 0.0, tenure, start);
+        EMICalculator.ScheduleSummary hikeSummary = new EMICalculator.ScheduleSummary(scenarioRateHike);
+
+        assertTrue(hikeSummary.getTotalInterest() > baseSummary.getTotalInterest(),
+                "Interest rate hike must increase total lifetime interest");
+    }
+
+    @Test
     @DisplayName("Verify InvalidPrepaymentException creation and payload")
     public void testInvalidPrepaymentException() {
         InvalidPrepaymentException ex = new InvalidPrepaymentException("Test prepayment exception", 50000.0, 20000.0);
