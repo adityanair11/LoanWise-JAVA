@@ -242,6 +242,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
                     JOptionPane.showMessageDialog(dialog, "Loan added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
                     dialog.dispose();
                     refreshLoans();
+                    selectionManager.selectUser(currentUser);
                 } else {
                     JOptionPane.showMessageDialog(dialog, "Failed to save loan to database.", "Database Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -283,6 +284,9 @@ public class LoanPanel extends JPanel implements UserChangeListener {
             if (deleted) {
                 JOptionPane.showMessageDialog(this, "Loan deleted successfully.", "Deleted", JOptionPane.INFORMATION_MESSAGE);
                 refreshLoans();
+                if (selectionManager.getCurrentUser() != null) {
+                    selectionManager.selectUser(selectionManager.getCurrentUser());
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to delete loan from database.", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -347,6 +351,9 @@ public class LoanPanel extends JPanel implements UserChangeListener {
                     JOptionPane.showMessageDialog(dialog, "Prepayment recorded successfully! Outstanding balance reduced.", "Success", JOptionPane.INFORMATION_MESSAGE);
                     dialog.dispose();
                     refreshLoans();
+                    if (selectionManager.getCurrentUser() != null) {
+                        selectionManager.selectUser(selectionManager.getCurrentUser());
+                    }
                 }
             } catch (InvalidPrepaymentException ipe) {
                 JOptionPane.showMessageDialog(dialog, ipe.getMessage(), "Invalid Prepayment", JOptionPane.ERROR_MESSAGE);

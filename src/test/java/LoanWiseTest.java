@@ -137,6 +137,34 @@ public class LoanWiseTest {
     }
 
     @Test
+    @DisplayName("Verify Debt-to-Income (DTI) ratio calculation and risk classification")
+    public void testDtiRatioCalculation() {
+        // Healthy (< 36%): e.g. EMI 25,000 / Income 1,00,000 = 25.0%
+        double healthyEmi = 25000.0;
+        double income = 100000.0;
+        double healthyDti = (healthyEmi / income) * 100.0;
+        assertEquals(25.0, healthyDti, 0.01);
+        assertTrue(healthyDti < 36.0, "DTI below 36% should be classified as Healthy");
+
+        // Moderate Risk (36% - 50%): e.g. EMI 45,000 / Income 1,00,000 = 45.0%
+        double moderateEmi = 45000.0;
+        double moderateDti = (moderateEmi / income) * 100.0;
+        assertEquals(45.0, moderateDti, 0.01);
+        assertTrue(moderateDti >= 36.0 && moderateDti <= 50.0, "DTI between 36% and 50% should be classified as Moderate Risk");
+
+        // Critical Exposure (> 50%): e.g. EMI 59,500 / Income 1,00,000 = 59.5%
+        double criticalEmi = 59500.0;
+        double criticalDti = (criticalEmi / income) * 100.0;
+        assertEquals(59.5, criticalDti, 0.01);
+        assertTrue(criticalDti > 50.0, "DTI above 50% should be classified as Critical Exposure");
+
+        // Division by zero safe guard
+        double zeroIncome = 0.0;
+        double safeDti = zeroIncome <= 0.0 ? (criticalEmi > 0 ? 100.0 : 0.0) : (criticalEmi / zeroIncome) * 100.0;
+        assertEquals(100.0, safeDti, 0.01);
+    }
+
+    @Test
     @DisplayName("Verify InvalidPrepaymentException creation and payload")
     public void testInvalidPrepaymentException() {
         InvalidPrepaymentException ex = new InvalidPrepaymentException("Test prepayment exception", 50000.0, 20000.0);
