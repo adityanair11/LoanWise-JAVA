@@ -14,6 +14,8 @@ import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,10 @@ public class LoanPanel extends JPanel implements UserChangeListener {
     private DefaultTableModel tableModel;
     private List<Loan> displayedLoans = new ArrayList<>();
     private JLabel headerLabel;
+
+    private JButton editLoanBtn;
+    private JButton deleteLoanBtn;
+    private JButton prepayBtn;
 
     public LoanPanel(LoanService loanService, DashboardPanel.UserSelectionManager selectionManager) {
         this.loanService = loanService;
@@ -52,7 +58,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         headerLabel.setFont(UITheme.FONT_TITLE);
         headerLabel.setForeground(UITheme.TEXT_MAIN);
 
-        JLabel subtitle = new JLabel("Register new liabilities, manage active balances, and record payments");
+        JLabel subtitle = new JLabel("Register new liabilities, edit existing terms, manage balances, and record payments");
         subtitle.setFont(UITheme.FONT_REGULAR);
         subtitle.setForeground(UITheme.TEXT_MUTED);
 
@@ -63,16 +69,24 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         buttonPanel.setOpaque(false);
 
         JButton addLoanBtn = UITheme.createStyledButton("Add New Loan", UITheme.ACCENT_BLUE, Color.WHITE);
-        JButton deleteLoanBtn = UITheme.createStyledButton("Delete Loan", UITheme.ACCENT_RED, Color.WHITE);
-        JButton prepayBtn = UITheme.createStyledButton("Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
-        JButton refreshBtn = UITheme.createStyledButton("Refresh", UITheme.BG_DARK, Color.WHITE);
+        editLoanBtn = UITheme.createStyledButton("Edit Loan", new Color(15, 23, 42), Color.WHITE);
+        deleteLoanBtn = UITheme.createStyledButton("Delete Loan", UITheme.ACCENT_RED, Color.WHITE);
+        prepayBtn = UITheme.createStyledButton("Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
+        JButton refreshBtn = UITheme.createStyledButton("Refresh", new Color(100, 116, 139), Color.WHITE);
+
+        // Buttons initially disabled until a table row is selected
+        editLoanBtn.setEnabled(false);
+        deleteLoanBtn.setEnabled(false);
+        prepayBtn.setEnabled(false);
 
         addLoanBtn.addActionListener(e -> showAddLoanDialog());
+        editLoanBtn.addActionListener(e -> showEditLoanDialog());
         deleteLoanBtn.addActionListener(e -> handleDeleteLoan());
         prepayBtn.addActionListener(e -> showPrepaymentDialog());
         refreshBtn.addActionListener(e -> refreshLoans());
 
         buttonPanel.add(addLoanBtn);
+        buttonPanel.add(editLoanBtn);
         buttonPanel.add(deleteLoanBtn);
         buttonPanel.add(prepayBtn);
         buttonPanel.add(refreshBtn);
@@ -88,7 +102,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         String[] cols = {
                 "Loan ID", "Loan Name", "Lender", "Type",
                 "Principal (₹)", "Outstanding Balance (₹)",
-                "Interest Rate (%)", "Tenure (Mo)", "Start Date", "Status"
+                "Interest Rate (%)", "Rate Type", "Tenure (Mo)", "Start Date", "Status"
         };
 
         tableModel = new DefaultTableModel(cols, 0) {
@@ -112,7 +126,56 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         loansTable.getColumnModel().getColumn(4).setCellRenderer(rightRenderer);
         loansTable.getColumnModel().getColumn(5).setCellRenderer(rightRenderer);
         loansTable.getColumnModel().getColumn(6).setCellRenderer(rightRenderer);
-        loansTable.getColumnModel().getColumn(7).setCellRenderer(rightRenderer);
+        loansTable.getColumnModel().getColumn(8).setCellRenderer(rightRenderer);
+
+        // Selection Listener: Enable/Disable action buttons based on row selection
+        loansTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                boolean hasSelection = loansTable.getSelectedRow() >= 0;
+                editLoanBtn.setEnabled(hasSelection);
+                deleteLoanBtn.setEnabled(hasSelection);
+                prepayBtn.setEnabled(hasSelection);
+            }
+        });
+
+        // Double-click row listener to edit loan
+        loansTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && loansTable.getSelectedRow() >= 0) {
+                    showEditLoanDialog();
+                }
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                // Ensure right click selects row before popup opens
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    int row = loansTable.rowAtPoint(e.getPoint());
+                    if (row >= 0 && !loansTable.isRowSelected(row)) {
+                        loansTable.setRowSelectionInterval(row, row);
+                    }
+                }
+            }
+        });
+
+        // Context Menu
+        JPopupMenu contextMenu = new JPopupMenu();
+        JMenuItem editItem = new JMenuItem("Edit Loan");
+        editItem.addActionListener(e -> showEditLoanDialog());
+
+        JMenuItem prepayItem = new JMenuItem("Apply Prepayment");
+        prepayItem.addActionListener(e -> showPrepaymentDialog());
+
+        JMenuItem deleteItem = new JMenuItem("Delete Loan");
+        deleteItem.addActionListener(e -> handleDeleteLoan());
+
+        contextMenu.add(editItem);
+        contextMenu.add(prepayItem);
+        contextMenu.addSeparator();
+        contextMenu.add(deleteItem);
+
+        loansTable.setComponentPopupMenu(contextMenu);
 
         JScrollPane scrollPane = new JScrollPane(loansTable);
         scrollPane.setBorder(new LineBorder(UITheme.BORDER_COLOR, 1));
@@ -136,6 +199,10 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         tableModel.setRowCount(0);
         displayedLoans.clear();
 
+        if (editLoanBtn != null) editLoanBtn.setEnabled(false);
+        if (deleteLoanBtn != null) deleteLoanBtn.setEnabled(false);
+        if (prepayBtn != null) prepayBtn.setEnabled(false);
+
         if (user == null) {
             return;
         }
@@ -150,11 +217,41 @@ public class LoanPanel extends JPanel implements UserChangeListener {
                     UITheme.formatCurrency(l.getPrincipalAmount()),
                     UITheme.formatCurrency(l.getOutstandingBalance()),
                     String.format("%.2f%%", l.getAnnualInterestRate()),
+                    l.getAnnualRateType() != null ? l.getAnnualRateType() : "FIXED",
                     l.getTenureMonths(),
                     l.getStartDate() != null ? l.getStartDate().toString() : "-",
                     l.getLoanStatus()
             });
         }
+    }
+
+    private void showEditLoanDialog() {
+        int selectedRow = loansTable.getSelectedRow();
+        if (selectedRow < 0) {
+            JOptionPane.showMessageDialog(this, "Please select a loan from the table to edit.", "Select Loan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int loanId = (int) tableModel.getValueAt(selectedRow, 0);
+        Loan loan = loanService.getLoanById(loanId);
+        if (loan == null) {
+            JOptionPane.showMessageDialog(this, "Loan details not found in database.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        EditLoanDialog dialog = new EditLoanDialog(
+                SwingUtilities.getWindowAncestor(this),
+                loan,
+                loanService,
+                () -> {
+                    refreshLoans();
+                    User currentUser = selectionManager.getCurrentUser();
+                    if (currentUser != null) {
+                        selectionManager.selectUser(currentUser);
+                    }
+                }
+        );
+        dialog.setVisible(true);
     }
 
     private void showAddLoanDialog() {
@@ -166,10 +263,10 @@ public class LoanPanel extends JPanel implements UserChangeListener {
 
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add New Loan Account", true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(480, 520);
+        dialog.setSize(500, 560);
         dialog.setLocationRelativeTo(this);
 
-        JPanel formPanel = new JPanel(new GridLayout(8, 2, 10, 12));
+        JPanel formPanel = new JPanel(new GridLayout(9, 2, 10, 12));
         formPanel.setBorder(new EmptyBorder(20, 24, 20, 24));
 
         JTextField nameField = new JTextField();
@@ -178,6 +275,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         JTextField principalField = new JTextField();
         JTextField balanceField = new JTextField();
         JTextField rateField = new JTextField();
+        JComboBox<String> rateTypeBox = new JComboBox<>(new String[]{"FIXED", "FLOATING"});
         JTextField tenureField = new JTextField();
         JTextField dueDayField = new JTextField("5");
 
@@ -193,6 +291,8 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         formPanel.add(balanceField);
         formPanel.add(new JLabel("Annual Interest Rate (%):"));
         formPanel.add(rateField);
+        formPanel.add(new JLabel("Rate Type:"));
+        formPanel.add(rateTypeBox);
         formPanel.add(new JLabel("Tenure (Months):"));
         formPanel.add(tenureField);
         formPanel.add(new JLabel("Monthly Due Day (1-31):"));
@@ -230,7 +330,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
                         principal,
                         balance,
                         rate,
-                        "REDUCING",
+                        (String) rateTypeBox.getSelectedItem(),
                         tenure,
                         LocalDate.now(),
                         dueDay,
