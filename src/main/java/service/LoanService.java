@@ -96,7 +96,7 @@ public class LoanService {
     }
 
     public boolean updateLoan(Loan loan) {
-        boolean success = loanDAO.update(loan);
+        boolean success = loanDAO.updateLoan(loan);
         if (success) {
             auditLogDAO.log(loan.getLoanId(), "LOAN_UPDATED",
                     "Updated loan '" + loan.getLoanName() + "' (New Balance: ₹" +

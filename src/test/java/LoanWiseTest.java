@@ -206,4 +206,32 @@ public class LoanWiseTest {
         assertEquals(20000.0, ex.getCurrentBalance());
         assertTrue(ex.getMessage().contains("50000.00"));
     }
+
+    @Test
+    @DisplayName("Verify Loan update attributes and LoanDAO safeguards")
+    public void testLoanUpdateAttributesAndSafeguards() {
+        Loan loan = new Loan(10, 1, "Home Loan", "HDFC", "HOME", 3000000.0, 2800000.0, 8.5, "FIXED", 240, LocalDate.now(), 5, "ACTIVE");
+        assertEquals("Home Loan", loan.getLoanName());
+        assertEquals(8.5, loan.getAnnualInterestRate());
+        assertEquals("FIXED", loan.getAnnualRateType());
+
+        // Simulate attributes edited via EditLoanDialog
+        loan.setLoanName("Renovated Home Loan");
+        loan.setLenderName("HDFC Bank Ltd");
+        loan.setAnnualInterestRate(9.25);
+        loan.setAnnualRateType("FLOATING");
+        loan.setTenureMonths(216);
+        loan.setOutstandingBalance(2650000.0);
+
+        assertEquals("Renovated Home Loan", loan.getLoanName());
+        assertEquals("HDFC Bank Ltd", loan.getLenderName());
+        assertEquals(9.25, loan.getAnnualInterestRate());
+        assertEquals("FLOATING", loan.getAnnualRateType());
+        assertEquals(216, loan.getTenureMonths());
+        assertEquals(2650000.0, loan.getOutstandingBalance());
+
+        // Safeguards on null loan
+        dao.LoanDAO loanDAO = new dao.LoanDAO();
+        assertFalse(loanDAO.updateLoan(null), "updateLoan on null loan must return false safely");
+    }
 }

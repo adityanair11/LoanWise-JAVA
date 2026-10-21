@@ -145,7 +145,11 @@ public class LoanDAO {
         return false;
     }
 
-    public boolean update(Loan loan) {
+    public boolean updateLoan(Loan loan) {
+        if (loan == null) {
+            return false;
+        }
+
         String sql = "UPDATE loan SET loan_name = ?, lender_name = ?, loan_type = ?, " +
                 "principal_amount = ?, outstanding_balance = ?, annual_interest_rate = ?, " +
                 "annual_rate_type = ?, tenure_months = ?, start_date = ?, due_day = ?, loan_status = ? " +
@@ -156,23 +160,50 @@ public class LoanDAO {
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setString(1, loan.getLoanName());
                 stmt.setString(2, loan.getLenderName());
-                stmt.setString(3, loan.getLoanType());
+
+                String loanType = loan.getLoanType() != null ? loan.getLoanType().toUpperCase() : "OTHER";
+                if (!loanType.equals("HOME") && !loanType.equals("AUTO") && !loanType.equals("PERSONAL") && !loanType.equals("EDUCATION")) {
+                    loanType = "OTHER";
+                }
+                stmt.setString(3, loanType);
+
                 stmt.setDouble(4, loan.getPrincipalAmount());
-                stmt.setDouble(5, loan.getOutstandingBalance());
+                stmt.setDouble(5, Math.max(0.0, loan.getOutstandingBalance()));
                 stmt.setDouble(6, loan.getAnnualInterestRate());
-                stmt.setString(7, loan.getAnnualRateType());
-                stmt.setInt(8, loan.getTenureMonths());
+
+                String rateType = loan.getAnnualRateType() != null ? loan.getAnnualRateType().toUpperCase() : "FIXED";
+                if (!rateType.equals("FIXED") && !rateType.equals("FLOATING")) {
+                    rateType = "FIXED";
+                }
+                stmt.setString(7, rateType);
+
+                stmt.setInt(8, Math.max(1, loan.getTenureMonths()));
                 stmt.setDate(9, loan.getStartDate() != null ? Date.valueOf(loan.getStartDate()) : Date.valueOf(LocalDate.now()));
-                stmt.setInt(10, loan.getDueDay());
-                stmt.setString(11, loan.getLoanStatus());
+
+                int dueDay = loan.getDueDay();
+                if (dueDay < 1 || dueDay > 31) {
+                    dueDay = 5;
+                }
+                stmt.setInt(10, dueDay);
+
+                String status = loan.getLoanStatus() != null ? loan.getLoanStatus().toUpperCase() : "ACTIVE";
+                if (!status.equals("ACTIVE") && !status.equals("PAID_OFF") && !status.equals("CLOSED")) {
+                    status = (loan.getOutstandingBalance() <= 0) ? "PAID_OFF" : "ACTIVE";
+                }
+                stmt.setString(11, status);
+
                 stmt.setInt(12, loan.getLoanId());
 
                 return stmt.executeUpdate() > 0;
             }
         } catch (SQLException e) {
-            System.err.println("[LoanDAO] Error in update: " + e.getMessage());
+            System.err.println("[LoanDAO] Error in updateLoan: " + e.getMessage());
         }
         return false;
+    }
+
+    public boolean update(Loan loan) {
+        return updateLoan(loan);
     }
 
     public boolean updateOutstandingBalance(int loanId, double newBalance) {
