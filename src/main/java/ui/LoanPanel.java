@@ -40,7 +40,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
 
         setLayout(new BorderLayout(16, 16));
         setBackground(UITheme.BG_LIGHT);
-        setBorder(new EmptyBorder(20, 24, 20, 24));
+        setBorder(new EmptyBorder(22, 28, 22, 28));
 
         initComponents();
         selectionManager.registerListener(this);
@@ -58,7 +58,7 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         headerLabel.setFont(UITheme.FONT_TITLE);
         headerLabel.setForeground(UITheme.TEXT_MAIN);
 
-        JLabel subtitle = new JLabel("Register new liabilities, edit existing terms, manage balances, and record payments");
+        JLabel subtitle = new JLabel("Register new liabilities, edit existing terms, manage balances, and record prepayments");
         subtitle.setFont(UITheme.FONT_REGULAR);
         subtitle.setForeground(UITheme.TEXT_MUTED);
 
@@ -68,11 +68,11 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setOpaque(false);
 
-        JButton addLoanBtn = UITheme.createStyledButton("Add New Loan", UITheme.ACCENT_BLUE, Color.WHITE);
-        editLoanBtn = UITheme.createStyledButton("Edit Loan", new Color(15, 23, 42), Color.WHITE);
+        JButton addLoanBtn = UITheme.createStyledButton("+ Add New Loan", UITheme.ACCENT_INDIGO, Color.WHITE);
+        editLoanBtn = UITheme.createSecondaryButton("✎ Edit Loan");
         deleteLoanBtn = UITheme.createStyledButton("Delete Loan", UITheme.ACCENT_RED, Color.WHITE);
-        prepayBtn = UITheme.createStyledButton("Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
-        JButton refreshBtn = UITheme.createStyledButton("Refresh", new Color(100, 116, 139), Color.WHITE);
+        prepayBtn = UITheme.createStyledButton("⚡ Apply Prepayment", UITheme.ACCENT_GREEN, Color.WHITE);
+        JButton refreshBtn = UITheme.createSecondaryButton("↻ Refresh");
 
         // Buttons initially disabled until a table row is selected
         editLoanBtn.setEnabled(false);
@@ -113,13 +113,17 @@ public class LoanPanel extends JPanel implements UserChangeListener {
         };
 
         loansTable = new JTable(tableModel);
-        loansTable.setRowHeight(32);
+        loansTable.setRowHeight(34);
         loansTable.setFont(UITheme.FONT_REGULAR);
         loansTable.getTableHeader().setFont(UITheme.FONT_BOLD);
-        loansTable.getTableHeader().setBackground(new Color(241, 245, 249));
+        loansTable.getTableHeader().setBackground(UITheme.BG_SUBTLE);
         loansTable.getTableHeader().setForeground(UITheme.TEXT_MAIN);
-        loansTable.setSelectionBackground(new Color(219, 234, 254));
+        loansTable.getTableHeader().setBorder(new LineBorder(UITheme.BORDER_COLOR, 1));
+        loansTable.setSelectionBackground(new Color(238, 242, 255));
+        loansTable.setSelectionForeground(UITheme.TEXT_MAIN);
         loansTable.setGridColor(UITheme.BORDER_COLOR);
+        loansTable.setShowHorizontalLines(true);
+        loansTable.setShowVerticalLines(false);
 
         DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
         rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);

@@ -54,7 +54,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
 
         setLayout(new BorderLayout(16, 16));
         setBackground(UITheme.BG_LIGHT);
-        setBorder(new EmptyBorder(20, 24, 20, 24));
+        setBorder(new EmptyBorder(22, 28, 22, 28));
 
         initComponents();
         selectionManager.registerListener(this);
@@ -69,7 +69,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         title.setFont(UITheme.FONT_TITLE);
         title.setForeground(UITheme.TEXT_MAIN);
 
-        JLabel subtitle = new JLabel("Simulate Debt Avalanche (Rate-First) vs Debt Snowball (Balance-First) using background multithreading");
+        JLabel subtitle = new JLabel("Model mathematically optimal repayment strategies to eliminate interest and accelerate debt-free timelines");
         subtitle.setFont(UITheme.FONT_REGULAR);
         subtitle.setForeground(UITheme.TEXT_MUTED);
 
@@ -77,7 +77,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         topBar.add(subtitle);
 
         // --- Left Control Card & Right Results Card ---
-        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 16, 0));
+        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 18, 0));
         centerPanel.setOpaque(false);
 
         // Left Controls Panel
@@ -156,7 +156,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
 
         sliderValueLabel = new JLabel("Selected Extra Monthly Payment: ₹5,000");
         sliderValueLabel.setFont(UITheme.FONT_BOLD);
-        sliderValueLabel.setForeground(UITheme.ACCENT_BLUE);
+        sliderValueLabel.setForeground(UITheme.ACCENT_INDIGO);
         sliderValueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         extraPaymentSlider.addChangeListener(e -> {
@@ -168,7 +168,7 @@ public class OptimizerPanel extends JPanel implements UserChangeListener {
         });
 
         // Trigger Button and Progress
-        simulateBtn = UITheme.createStyledButton("Simulate Acceleration Savings", UITheme.ACCENT_BLUE, Color.WHITE);
+        simulateBtn = UITheme.createStyledButton("⚡ Simulate Acceleration Savings", UITheme.ACCENT_INDIGO, Color.WHITE);
         simulateBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         simulateBtn.addActionListener(e -> triggerSimulation());
 

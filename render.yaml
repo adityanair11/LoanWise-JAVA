@@ -1,0 +1,24 @@
+services:
+  # Web Full-Stack Service (Node.js + Express + Semantic HTML5/CSS3)
+  - type: web
+    name: loanwise-web
+    env: node
+    plan: free
+    rootDir: web
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: loanwise

@@ -60,7 +60,7 @@ public class SchedulePanel extends JPanel implements UserChangeListener {
 
         setLayout(new BorderLayout(16, 16));
         setBackground(UITheme.BG_LIGHT);
-        setBorder(new EmptyBorder(20, 24, 20, 24));
+        setBorder(new EmptyBorder(22, 28, 22, 28));
 
         initComponents();
         selectionManager.registerListener(this);
@@ -104,7 +104,7 @@ public class SchedulePanel extends JPanel implements UserChangeListener {
 
         loanSelector.addActionListener(e -> onLoanSelected());
 
-        exportCsvBtn = UITheme.createStyledButton("Export to CSV", UITheme.ACCENT_GREEN, Color.WHITE);
+        exportCsvBtn = UITheme.createStyledButton("⬇ Export to CSV", UITheme.ACCENT_GREEN, Color.WHITE);
         exportCsvBtn.addActionListener(e -> exportScheduleToCsv());
 
         actions.add(selectLabel);
@@ -124,7 +124,7 @@ public class SchedulePanel extends JPanel implements UserChangeListener {
 
         JLabel simulatorLabel = new JLabel("Scenario Simulator:");
         simulatorLabel.setFont(UITheme.FONT_BOLD);
-        simulatorLabel.setForeground(UITheme.ACCENT_BLUE);
+        simulatorLabel.setForeground(UITheme.ACCENT_INDIGO);
 
         JLabel prepayLabel = new JLabel("Extra Prepayment (₹/mo):");
         prepayLabel.setFont(UITheme.FONT_REGULAR);
@@ -155,14 +155,11 @@ public class SchedulePanel extends JPanel implements UserChangeListener {
         effectiveMonthSpinner.setPreferredSize(new Dimension(65, 30));
         effectiveMonthSpinner.setToolTipText("Installment number from which revised rate and extra prepayment take effect");
 
-        applyScenarioBtn = UITheme.createStyledButton("Apply Scenario", UITheme.ACCENT_BLUE, Color.WHITE);
+        applyScenarioBtn = UITheme.createStyledButton("Apply Scenario", UITheme.ACCENT_INDIGO, Color.WHITE);
         applyScenarioBtn.addActionListener(e -> applyScenario());
 
-        resetBaselineBtn = UITheme.createStyledButton("Reset to Baseline", new Color(241, 245, 249), UITheme.TEXT_MAIN);
-        resetBaselineBtn.setBorder(new CompoundBorder(
-                new LineBorder(UITheme.BORDER_COLOR, 1, true),
-                new EmptyBorder(8, 14, 8, 14)
-        ));
+        resetBaselineBtn = UITheme.createSecondaryButton("Reset to Baseline");
+        resetBaselineBtn.addActionListener(e -> resetToBaseline());
         resetBaselineBtn.addActionListener(e -> resetToBaseline());
 
         scenarioCard.add(simulatorLabel);

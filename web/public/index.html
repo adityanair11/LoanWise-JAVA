@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanWise — Personal Debt Prepayment & Payoff Acceleration Engine</title>
+  <!-- Modern Typography and Vector Icons -->
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Chart.js for interactive financial visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Floating Toast Notifications Container -->
+  <div id="toastContainer"></div>
+
+  <!-- Semantic Application Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-icon-wrapper">
+        <!-- SVG Lightning/Engine Icon (No Emojis) -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-title">LoanWise</span>
+      </div>
+      <span class="brand-tag">Debt Acceleration & Prepayment Engine</span>
+    </div>
+
+    <div class="header-actions">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>MySQL Connected</span>
+      </div>
+      <div id="userBadge" class="user-profile-badge">
+        <span class="user-avatar-circle" id="userAvatar">U</span>
+        <span id="userNameLabel">Session initializing...</span>
+      </div>
+      <button id="authBtn" class="btn btn-secondary" style="color: #ffffff; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span id="authBtnText">Sign In</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Semantic Navigation (<nav>) with Vector Icons -->
+  <nav class="nav-bar">
+    <button class="nav-tab active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+        <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+        <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+        <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+      </svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-tab" data-tab="loans">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+        <line x1="2" x2="22" y1="10" y2="10"></line>
+      </svg>
+      <span>My Loans</span>
+    </button>
+    <button class="nav-tab" data-tab="optimizer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+      <span>Payoff Optimizer</span>
+    </button>
+    <button class="nav-tab" data-tab="amortization">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="18" height="18" x="3" y="4" rx="2"></rect>
+        <line x1="16" x2="16" y1="2" y2="6"></line>
+        <line x1="8" x2="8" y1="2" y2="6"></line>
+        <line x1="3" x2="21" y1="10" y2="10"></line>
+      </svg>
+      <span>Amortization Schedule</span>
+    </button>
+    <button class="nav-tab" data-tab="audit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+      </svg>
+      <span>Audit Ledger</span>
+    </button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-container">
+
+    <!-- 1. DASHBOARD VIEW -->
+    <section id="tab-dashboard" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Personal Debt Portfolio Overview</h1>
+          <p class="section-subtitle">Real-time exposure metrics, scheduled outflows, and debt-to-income analytics</p>
+        </div>
+        <button id="refreshKpisBtn" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M8 16H3v5"></path>
+          </svg>
+          <span>Refresh Portfolio</span>
+        </button>
+      </div>
+
+      <!-- 5 KPI Cards Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-top-row">
+            <span class="kpi-label">TOTAL ACTIVE DEBT</span>
+            <div class="kpi-icon-pill" style="background: var(--accent-rose-subtle);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-rose)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+          </div>
+          <span id="kpiDebt" class="kpi-value" style="color: var(--accent-rose);">₹0.00</span>
+          <span class="kpi-subtext">Cumulative principal remaining</span>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top-row">
+            <span class="kpi-label">ACTIVE ACCOUNTS</span>
+            <div class="kpi-icon-pill" style="background: var(--accent-primary-subtle);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+            </div>
+          </div>
+          <span id="kpiAccounts" class="kpi-value" style="color: var(--accent-primary);">0</span>
+          <span class="kpi-subtext">Open liability facilities</span>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top-row">
+            <span class="kpi-label">MONTHLY COMMITMENT</span>
+            <div class="kpi-icon-pill" style="background: var(--accent-amber-subtle);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-amber)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 16 4-4 4 4 6-6"></path><path d="M14 6h4v4"></path></svg>
+            </div>
+          </div>
+          <span id="kpiEmi" class="kpi-value" style="color: var(--accent-amber);">₹0.00</span>
+          <span class="kpi-subtext">Base scheduled contractual EMI</span>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top-row">
+            <span class="kpi-label">MONTHLY INCOME</span>
+            <div class="kpi-icon-pill" style="background: var(--accent-emerald-subtle);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="m17 5-5-3-5 3"></path><path d="m17 19-5 3-5-3"></path></svg>
+            </div>
+          </div>
+          <span id="kpiIncome" class="kpi-value" style="color: var(--accent-emerald);">₹0.00</span>
+          <span class="kpi-subtext">Verified declared monthly cashflow</span>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top-row">
+            <span class="kpi-label">DEBT-TO-INCOME (DTI)</span>
+            <div class="kpi-icon-pill" style="background: var(--accent-emerald-subtle);" id="dtiIconPill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            </div>
+          </div>
+          <span id="kpiDti" class="kpi-value" style="color: var(--accent-emerald);">0.0%</span>
+          <div>
+            <span id="kpiDtiBadge" class="badge-pill badge-green">Healthy (&lt; 36%)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Breakdown Row: Portfolio Table & Debt Distribution Donut -->
+      <div class="dashboard-visual-grid">
+        <article class="card" style="margin-bottom: 0;">
+          <div class="filter-bar">
+            <div>
+              <h2 style="font-size: 15px; font-weight: 700;">Active Liabilities Breakdown</h2>
+              <p style="font-size: 12px; color: var(--text-muted);">Account-level breakdown of sanctioned principals, active rates, and monthly obligations</p>
+            </div>
+            <div class="search-input-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="dashboardLoanSearch" class="search-input" placeholder="Search by loan or lender...">
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Loan Name</th>
+                  <th>Lender</th>
+                  <th>Category</th>
+                  <th class="text-right">Principal</th>
+                  <th class="text-right">Balance</th>
+                  <th class="text-right">Rate</th>
+                  <th>Tenure</th>
+                  <th class="text-right">Monthly EMI</th>
+                </tr>
+              </thead>
+              <tbody id="dashboardLoansTbody">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading active portfolio...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Interactive Debt Distribution Card -->
+        <article class="card" style="margin-bottom: 0; display: flex; flex-direction: column;">
+          <h2 style="font-size: 15px; font-weight: 700;">Debt Exposure by Category</h2>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Visual weight distribution across facilities</p>
+          <div style="flex: 1; display: flex; align-items: center; justify-content: center; min-height: 200px; position: relative;">
+            <canvas id="debtDonutChart"></canvas>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 2. MY LOANS VIEW -->
+    <section id="tab-loans" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Manage Loan Accounts</h1>
+          <p class="section-subtitle">Register new debt facilities, edit existing contractual terms, and record prepayments</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="openAddLoanModalBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add New Loan</span>
+          </button>
+          <button id="openPrepayModalBtn" class="btn btn-success">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Apply Prepayment</span>
+          </button>
+        </div>
+      </div>
+
+      <article class="card">
+        <div class="filter-bar">
+          <div class="filter-chips">
+            <button class="filter-chip active" data-filter="ALL">All Categories</button>
+            <button class="filter-chip" data-filter="HOME">Home</button>
+            <button class="filter-chip" data-filter="AUTO">Auto</button>
+            <button class="filter-chip" data-filter="PERSONAL">Personal</button>
+            <button class="filter-chip" data-filter="EDUCATION">Education</button>
+          </div>
+          <div class="search-input-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="loansSearchInput" class="search-input" placeholder="Filter loans...">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Loan Facility</th>
+                <th>Lender</th>
+                <th>Category</th>
+                <th class="text-right">Principal</th>
+                <th class="text-right">Outstanding Balance</th>
+                <th class="text-right">Rate</th>
+                <th>Rate Type</th>
+                <th>Tenure</th>
+                <th>Status</th>
+                <th style="text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="loansTableTbody">
+              <tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading registered loans...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- 3. PAYOFF OPTIMIZER VIEW -->
+    <section id="tab-optimizer" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Debt Acceleration & Prepayment Optimizer</h1>
+          <p class="section-subtitle">Simulate Debt Avalanche (Highest Rate First) vs Debt Snowball (Lowest Balance First) with automated rollover</p>
+        </div>
+      </div>
+
+      <div class="split-grid">
+        <!-- Configuration Card -->
+        <article class="card">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Strategy & Budget Configuration</h2>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 18px;">Configure extra monthly surplus and target allocation rules</p>
+          
+          <div class="form-group">
+            <label class="form-label">Acceleration Method:</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+              <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; cursor: pointer; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #ffffff;">
+                <input type="radio" name="optStrategy" value="AVALANCHE" checked style="margin-top: 3px;">
+                <div>
+                  <strong style="color: var(--text-main);">Debt Avalanche</strong>
+                  <p style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">Attacks highest interest rates first. Mathematically minimizes total interest paid across all loans.</p>
+                </div>
+              </label>
+
+              <label style="display: flex; align-items: flex-start; gap: 10px; font-size: 13px; cursor: pointer; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: #ffffff;">
+                <input type="radio" name="optStrategy" value="SNOWBALL" style="margin-top: 3px;">
+                <div>
+                  <strong style="color: var(--text-main);">Debt Snowball</strong>
+                  <p style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">Attacks lowest outstanding balances first. Maximizes early psychological milestone wins.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label class="form-label" style="margin: 0;">Extra Monthly Prepayment Budget:</label>
+              <div style="position: relative; width: 140px;">
+                <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-weight: 600; color: var(--text-muted); font-size: 13px;">₹</span>
+                <input type="number" id="optBudgetInput" class="form-input" style="padding-left: 22px; text-align: right; font-weight: 700; font-family: var(--font-mono);" value="10000" min="0" max="100000" step="500">
+              </div>
+            </div>
+            <input type="range" id="optBudgetSlider" min="0" max="50000" step="1000" value="10000" style="margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-subtle); margin-top: 4px;">
+              <span>₹0</span>
+              <span>₹25,000</span>
+              <span>₹50,000</span>
+            </div>
+          </div>
+
+          <button id="runSimulationBtn" class="btn btn-primary" style="width: 100%; margin-top: 14px; padding: 10px 18px; font-size: 14px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Simulate Acceleration Savings</span>
+          </button>
+        </article>
+
+        <!-- Projected Results Card with Chart -->
+        <article class="card">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 4px;">Projected Acceleration Impact</h2>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Baseline contractual amortizations compared to accelerated strategy</p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="background: var(--accent-emerald-subtle); border: 1px solid var(--accent-emerald-border); padding: 12px 14px; border-radius: var(--radius-sm);">
+              <span style="font-size: 11px; font-weight: 700; color: var(--accent-emerald); letter-spacing: 0.5px;">INTEREST ELIMINATED</span>
+              <p id="optInterestSaved" style="font-size: 22px; font-weight: 700; color: var(--accent-emerald); font-family: var(--font-mono); margin-top: 4px;">₹0.00</p>
+            </div>
+            <div style="background: var(--accent-primary-subtle); border: 1px solid var(--accent-primary-border); padding: 12px 14px; border-radius: var(--radius-sm);">
+              <span style="font-size: 11px; font-weight: 700; color: var(--accent-primary); letter-spacing: 0.5px;">TENURE SHORTENED</span>
+              <p id="optMonthsSaved" style="font-size: 22px; font-weight: 700; color: var(--accent-primary); font-family: var(--font-mono); margin-top: 4px;">0 Months</p>
+            </div>
+          </div>
+
+          <!-- Interactive Comparison Chart Container -->
+          <div style="height: 160px; margin-bottom: 16px;">
+            <canvas id="optimizerCompareChart"></canvas>
+          </div>
+
+          <h3 style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 8px;">Target Payoff Order:</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">Rank</th>
+                  <th>Loan Name</th>
+                  <th class="text-right">Balance</th>
+                  <th class="text-right">Rate</th>
+                </tr>
+              </thead>
+              <tbody id="optPriorityTbody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 16px;">Click simulate to compute priority payoff sequence</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 4. AMORTIZATION SCHEDULE VIEW -->
+    <section id="tab-amortization" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Amortization Schedule & Scenario Simulator</h1>
+          <p class="section-subtitle">Installment-by-installment reducing-balance principal vs interest breakdown with dynamic scenario modelling</p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <select id="amortLoanSelect" class="form-select" style="width: 280px;"></select>
+          <button id="amortExportCsvBtn" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenario Simulator Controls Card -->
+      <article class="card" style="background: var(--bg-subtle); border-color: var(--border-color); padding: 16px 20px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary);"></div>
+            <strong style="color: var(--text-main); font-size: 13px;">Scenario Parameters:</strong>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 12px; font-weight: 500;">Extra Prepayment (₹/mo):</label>
+              <input type="number" id="scenarioPrepayInput" class="form-input" style="width: 100px; text-align: right; font-family: var(--font-mono);" value="0" min="0" step="500">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 12px; font-weight: 500;">Revised Rate (%):</label>
+              <input type="number" id="scenarioRateInput" class="form-input" style="width: 80px; text-align: right; font-family: var(--font-mono);" step="0.05" min="0.1" max="100">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label style="font-size: 12px; font-weight: 500;">From Month #:</label>
+              <input type="number" id="scenarioMonthInput" class="form-input" style="width: 70px; text-align: right; font-family: var(--font-mono);" value="1" min="1" max="600">
+            </div>
+
+            <button id="applyScenarioBtn" class="btn btn-primary" style="padding: 7px 14px;">Apply Scenario</button>
+            <button id="resetScenarioBtn" class="btn btn-secondary" style="padding: 7px 14px;">Reset</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Comparative Summary Banner -->
+      <div id="amortComparisonBanner" class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #ffffff;">
+        <div>
+          <p id="amortBaselineStats" style="font-size: 13px; font-weight: 600; color: var(--text-main);">Baseline: Loading...</p>
+          <p id="amortScenarioStats" style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">Scenario: None applied</p>
+        </div>
+        <span id="amortDeltaBadge" class="badge-pill badge-slate">Baseline Active</span>
+      </div>
+
+      <!-- Interactive Amortization Chart -->
+      <article class="card" style="padding: 16px 20px;">
+        <h2 style="font-size: 14px; font-weight: 700; margin-bottom: 10px;">Principal Balance & Payment Composition Curve</h2>
+        <div style="height: 200px;">
+          <canvas id="amortCurveChart"></canvas>
+        </div>
+      </article>
+
+      <!-- Schedule Data Table -->
+      <article class="card">
+        <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Inst. #</th>
+                <th>Due Date</th>
+                <th class="text-right">Opening Balance</th>
+                <th class="text-right">EMI</th>
+                <th class="text-right">Principal Paid</th>
+                <th class="text-right">Interest Paid</th>
+                <th class="text-right">Closing Balance</th>
+              </tr>
+            </thead>
+            <tbody id="amortScheduleTbody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Select a loan facility to generate schedule</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- 5. AUDIT LEDGER VIEW -->
+    <section id="tab-audit" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Automated Database Audit Ledger</h1>
+          <p class="section-subtitle">Real-time immutable audit trail populated directly by MySQL database triggers and operational events</p>
+        </div>
+        <button id="refreshAuditBtn" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M8 16H3v5"></path>
+          </svg>
+          <span>Refresh Ledger</span>
+        </button>
+      </div>
+
+      <article class="card">
+        <div class="filter-bar">
+          <div class="filter-chips">
+            <button class="filter-chip active" data-audit-filter="ALL">All Actions</button>
+            <button class="filter-chip" data-audit-filter="PREPAYMENT">Prepayments</button>
+            <button class="filter-chip" data-audit-filter="REPAYMENT">Repayments</button>
+            <button class="filter-chip" data-audit-filter="UPDATE">Rate Changes</button>
+            <button class="filter-chip" data-audit-filter="LOGIN">User Logins</button>
+          </div>
+          <div class="search-input-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="auditSearchInput" class="search-input" placeholder="Search audit trail...">
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Audit ID</th>
+                <th style="width: 90px;">Loan ID</th>
+                <th style="width: 140px;">Action Type</th>
+                <th>Action Details</th>
+                <th style="width: 180px;">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="auditTbody">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading audit ledger...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+  </main>
+
+  <!-- MODAL: ADD / EDIT LOAN -->
+  <div id="loanModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="loanModalTitle" style="font-size: 15px; font-weight: 700;">Add New Loan Facility</h3>
+        <button id="closeLoanModalBtn" class="btn-icon-only" style="color: #ffffff;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <form id="loanForm" class="modal-body">
+        <input type="hidden" id="loanModalId">
+        <div class="form-group">
+          <label class="form-label" for="loanModalName">Loan Name *</label>
+          <input type="text" id="loanModalName" class="form-input" required placeholder="e.g. Home Loan">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalLender">Lender Name *</label>
+          <input type="text" id="loanModalLender" class="form-input" required placeholder="e.g. HDFC Bank">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalType">Loan Category</label>
+          <select id="loanModalType" class="form-select">
+            <option value="HOME">HOME</option>
+            <option value="AUTO">AUTO</option>
+            <option value="PERSONAL">PERSONAL</option>
+            <option value="EDUCATION">EDUCATION</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="loanModalPrincipal">Sanctioned Principal (₹) *</label>
+            <input type="number" id="loanModalPrincipal" class="form-input" required min="1000" step="500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loanModalBalance">Current Outstanding (₹) *</label>
+            <input type="number" id="loanModalBalance" class="form-input" required min="0" step="500">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="loanModalRate">Annual Interest Rate (%) *</label>
+            <input type="number" id="loanModalRate" class="form-input" required min="0.1" max="100" step="0.05">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loanModalRateType">Rate Type</label>
+            <select id="loanModalRateType" class="form-select">
+              <option value="FIXED">FIXED</option>
+              <option value="FLOATING">FLOATING</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalTenure">Remaining Tenure (Months) *</label>
+          <input type="number" id="loanModalTenure" class="form-input" required min="1" max="600" value="120">
+        </div>
+        <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -10px;">
+          <button type="button" id="cancelLoanModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Loan Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PREPAYMENT -->
+  <div id="prepayModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 15px; font-weight: 700;">Record Principal Prepayment</h3>
+        <button id="closePrepayModalBtn" class="btn-icon-only" style="color: #ffffff;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <form id="prepayForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="prepayLoanSelect">Target Loan Facility *</label>
+          <select id="prepayLoanSelect" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayAmountInput">Prepayment Amount (₹) *</label>
+          <input type="number" id="prepayAmountInput" class="form-input" required min="100" step="100" placeholder="e.g. 25000">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayStrategySelect">Strategy Classification</label>
+          <select id="prepayStrategySelect" class="form-select">
+            <option value="AVALANCHE">AVALANCHE (High Interest Priority)</option>
+            <option value="SNOWBALL">SNOWBALL (Low Balance Priority)</option>
+            <option value="MANUAL">MANUAL (One-off Prepayment)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayNotesInput">Audit Notes</label>
+          <input type="text" id="prepayNotesInput" class="form-input" value="Lump sum principal reduction">
+        </div>
+        <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -10px;">
+          <button type="button" id="cancelPrepayModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-success">Record Prepayment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTHENTICATION (SIGN IN / REGISTER) -->
+  <div id="authModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="authModalTitle" style="font-size: 15px; font-weight: 700;">Account Authentication</h3>
+        <button id="closeAuthModalBtn" class="btn-icon-only" style="color: #ffffff;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 8px; margin-bottom: 18px;">
+          <button id="authTabLogin" class="btn btn-primary" style="flex: 1;">Sign In</button>
+          <button id="authTabRegister" class="btn btn-secondary" style="flex: 1;">Register Account</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Email Address *</label>
+            <input type="email" id="loginEmail" class="form-input" required placeholder="aarav@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password *</label>
+            <input type="password" id="loginPassword" class="form-input" required placeholder="Password@123">
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 14px;">Demo Credentials: <code>aarav@example.com</code> / <code>Password@123</code></p>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" style="display: none;">
+          <div class="form-group">
+            <label class="form-label" for="regName">Full Name *</label>
+            <input type="text" id="regName" class="form-input" required placeholder="e.g. Diya Patil">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email Address *</label>
+            <input type="email" id="regEmail" class="form-input" required placeholder="diya@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regIncome">Declared Monthly Income (₹) *</label>
+            <input type="number" id="regIncome" class="form-input" required min="1000" placeholder="e.g. 85000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password *</label>
+            <input type="password" id="regPassword" class="form-input" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Register Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Semantic Footer -->
+  <footer style="text-align: center; padding: 24px 0; color: var(--text-subtle); font-size: 12px; border-top: 1px solid var(--border-color); margin-top: 40px;">
+    LoanWise Financial Engine • Full Stack Personal Debt Acceleration Platform • Symbiosis International (Deemed University)
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
