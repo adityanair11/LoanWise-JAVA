@@ -386,11 +386,30 @@ app.post('/api/optimizer/simulate', authenticateToken, async (req, res) => {
 
 app.get('/api/audit-logs', authenticateToken, async (req, res) => {
   try {
-    const [logs] = await pool.execute(
-      'SELECT log_id, loan_id, action_type, action_details, action_timestamp FROM audit_log ORDER BY action_timestamp DESC, log_id DESC LIMIT 50'
-    );
+    let logs = [];
+    try {
+      // Primary live schema: audit_id, entity_name, entity_id, action_name, action_details, action_time
+      const [rows] = await pool.execute(
+        'SELECT audit_id, entity_id, entity_name, action_name, action_details, action_time FROM audit_log ORDER BY audit_id DESC LIMIT 100'
+      );
+      logs = rows.map(r => ({
+        log_id: r.audit_id,
+        loan_id: r.entity_id || null,
+        entity_name: r.entity_name || 'LOAN',
+        action_type: r.action_name,
+        action_details: r.action_details || '',
+        action_timestamp: r.action_time
+      }));
+    } catch (e1) {
+      // Fallback schema: log_id, loan_id, action_type, action_details, action_timestamp
+      const [rows] = await pool.execute(
+        'SELECT log_id, loan_id, action_type, action_details, action_timestamp FROM audit_log ORDER BY log_id DESC LIMIT 100'
+      );
+      logs = rows;
+    }
     res.json({ logs });
   } catch (err) {
+    console.error('[Audit Logs Error]', err);
     res.status(500).json({ error: err.message });
   }
 });
