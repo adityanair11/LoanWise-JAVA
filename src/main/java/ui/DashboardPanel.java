@@ -41,7 +41,7 @@ public class DashboardPanel extends JPanel {
 
         setLayout(new BorderLayout(16, 16));
         setBackground(UITheme.BG_LIGHT);
-        setBorder(new EmptyBorder(20, 24, 20, 24));
+        setBorder(new EmptyBorder(22, 28, 22, 28));
 
         initComponents();
 
@@ -63,7 +63,7 @@ public class DashboardPanel extends JPanel {
         titleLabel.setFont(UITheme.FONT_TITLE);
         titleLabel.setForeground(UITheme.TEXT_MAIN);
 
-        JLabel subtitleLabel = new JLabel("Monitor active debt exposures, monthly commitments, and portfolio velocity");
+        JLabel subtitleLabel = new JLabel("Monitor active liabilities, monthly commitments, and portfolio velocity in real-time");
         subtitleLabel.setFont(UITheme.FONT_REGULAR);
         subtitleLabel.setForeground(UITheme.TEXT_MUTED);
 
@@ -84,7 +84,7 @@ public class DashboardPanel extends JPanel {
                 new EmptyBorder(8, 14, 8, 14)
         ));
 
-        JButton refreshBtn = UITheme.createStyledButton("Refresh", UITheme.BG_DARK, Color.WHITE);
+        JButton refreshBtn = UITheme.createSecondaryButton("↻ Refresh");
         refreshBtn.addActionListener(e -> refreshData(selectionManager.getCurrentUser()));
 
         rightPanel.add(accountBadgeLabel);
@@ -94,11 +94,11 @@ public class DashboardPanel extends JPanel {
         topPanel.add(rightPanel, BorderLayout.EAST);
 
         // --- Center Content: KPI Cards + Portfolio Table ---
-        JPanel contentPanel = new JPanel(new BorderLayout(0, 20));
+        JPanel contentPanel = new JPanel(new BorderLayout(0, 18));
         contentPanel.setOpaque(false);
 
         // 5 KPI Cards Grid
-        JPanel kpiGrid = new JPanel(new GridLayout(1, 5, 14, 0));
+        JPanel kpiGrid = new JPanel(new GridLayout(1, 5, 12, 0));
         kpiGrid.setOpaque(false);
 
         totalDebtLabel = new JLabel("₹0.00");
@@ -109,21 +109,31 @@ public class DashboardPanel extends JPanel {
         dtiBadgeLabel = new JLabel("Healthy (< 36%)");
 
         kpiGrid.add(createKpiCard("TOTAL ACTIVE DEBT", totalDebtLabel, UITheme.ACCENT_RED, "Across all lenders"));
-        kpiGrid.add(createKpiCard("ACTIVE LOANS COUNT", activeLoansLabel, UITheme.ACCENT_BLUE, "Outstanding accounts"));
-        kpiGrid.add(createKpiCard("MONTHLY EMI COMMITMENT", totalEmiLabel, UITheme.ACCENT_ORANGE, "Base scheduled outflow"));
+        kpiGrid.add(createKpiCard("ACTIVE ACCOUNTS", activeLoansLabel, UITheme.ACCENT_INDIGO, "Outstanding loans"));
+        kpiGrid.add(createKpiCard("MONTHLY COMMITMENT", totalEmiLabel, UITheme.ACCENT_ORANGE, "Base scheduled EMI"));
         kpiGrid.add(createKpiCard("MONTHLY INCOME", monthlyIncomeLabel, UITheme.ACCENT_GREEN, "Verified declared income"));
-        kpiGrid.add(createKpiCard("DEBT-TO-INCOME (DTI)", dtiRatioLabel, new Color(0x2e, 0x7d, 0x32), dtiBadgeLabel));
+        kpiGrid.add(createKpiCard("DEBT-TO-INCOME (DTI)", dtiRatioLabel, UITheme.ACCENT_GREEN, dtiBadgeLabel));
 
         contentPanel.add(kpiGrid, BorderLayout.NORTH);
 
         // Active Loans Table Card
-        JPanel tableCard = new JPanel(new BorderLayout(0, 10));
+        JPanel tableCard = new JPanel(new BorderLayout(0, 12));
         tableCard.setBackground(UITheme.CARD_BG);
         tableCard.setBorder(UITheme.createCardBorder());
 
-        JLabel tableTitle = new JLabel("Active Loans Breakdown");
+        JPanel tableHeaderPanel = new JPanel(new BorderLayout());
+        tableHeaderPanel.setOpaque(false);
+
+        JLabel tableTitle = new JLabel("Active Liabilities Breakdown");
         tableTitle.setFont(UITheme.FONT_HEADER);
         tableTitle.setForeground(UITheme.TEXT_MAIN);
+
+        JLabel tableSubtitle = new JLabel("Detailed account-level view of sanctioned principals, active rates, and monthly obligations");
+        tableSubtitle.setFont(UITheme.FONT_SMALL);
+        tableSubtitle.setForeground(UITheme.TEXT_MUTED);
+
+        tableHeaderPanel.add(tableTitle, BorderLayout.NORTH);
+        tableHeaderPanel.add(tableSubtitle, BorderLayout.SOUTH);
 
         String[] columns = {"ID", "Loan Name", "Lender", "Category", "Principal (₹)", "Outstanding Balance (₹)", "Interest Rate", "Tenure (Mo)", "Est. Monthly EMI (₹)"};
         tableModel = new DefaultTableModel(columns, 0) {
@@ -134,13 +144,17 @@ public class DashboardPanel extends JPanel {
         };
 
         portfolioTable = new JTable(tableModel);
-        portfolioTable.setRowHeight(32);
+        portfolioTable.setRowHeight(34);
         portfolioTable.setFont(UITheme.FONT_REGULAR);
         portfolioTable.getTableHeader().setFont(UITheme.FONT_BOLD);
-        portfolioTable.getTableHeader().setBackground(new Color(241, 245, 249));
+        portfolioTable.getTableHeader().setBackground(UITheme.BG_SUBTLE);
         portfolioTable.getTableHeader().setForeground(UITheme.TEXT_MAIN);
+        portfolioTable.getTableHeader().setBorder(new LineBorder(UITheme.BORDER_COLOR, 1));
         portfolioTable.setGridColor(UITheme.BORDER_COLOR);
-        portfolioTable.setSelectionBackground(new Color(219, 234, 254));
+        portfolioTable.setShowHorizontalLines(true);
+        portfolioTable.setShowVerticalLines(false);
+        portfolioTable.setSelectionBackground(new Color(238, 242, 255)); // Soft indigo 50
+        portfolioTable.setSelectionForeground(UITheme.TEXT_MAIN);
 
         DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
         rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -151,8 +165,9 @@ public class DashboardPanel extends JPanel {
 
         JScrollPane scrollPane = new JScrollPane(portfolioTable);
         scrollPane.setBorder(new LineBorder(UITheme.BORDER_COLOR, 1));
+        scrollPane.getViewport().setBackground(Color.WHITE);
 
-        tableCard.add(tableTitle, BorderLayout.NORTH);
+        tableCard.add(tableHeaderPanel, BorderLayout.NORTH);
         tableCard.add(scrollPane, BorderLayout.CENTER);
 
         contentPanel.add(tableCard, BorderLayout.CENTER);
@@ -171,10 +186,10 @@ public class DashboardPanel extends JPanel {
     private JPanel createKpiCard(String labelText, JLabel valueLabel, Color accentColor, JLabel footerLabel) {
         JPanel card = new JPanel(new BorderLayout(0, 6));
         card.setBackground(UITheme.CARD_BG);
-        card.setBorder(UITheme.createCardBorder());
+        card.setBorder(UITheme.createKpiCardBorder());
 
         JLabel header = new JLabel(labelText);
-        header.setFont(UITheme.FONT_SMALL);
+        header.setFont(UITheme.FONT_SMALL_BOLD);
         header.setForeground(UITheme.TEXT_MUTED);
 
         valueLabel.setFont(UITheme.FONT_KPI_VAL);
@@ -242,8 +257,8 @@ public class DashboardPanel extends JPanel {
     private void updateDtiMetric(double totalEMI, double income) {
         if (income <= 0.0) {
             dtiRatioLabel.setText(totalEMI > 0 ? "100.0%" : "0.0%");
-            Color criticalColor = new Color(0xd3, 0x2f, 0x2f); // #d32f2f
-            Color healthyColor = new Color(0x2e, 0x7d, 0x32);  // #2e7d32
+            Color criticalColor = UITheme.ACCENT_RED;
+            Color healthyColor = UITheme.ACCENT_GREEN;
             dtiRatioLabel.setForeground(totalEMI > 0 ? criticalColor : healthyColor);
             dtiBadgeLabel.setText(totalEMI > 0 ? "Critical Exposure (> 50%)" : "Healthy (< 36%)");
             dtiBadgeLabel.setForeground(totalEMI > 0 ? criticalColor : healthyColor);
@@ -253,9 +268,9 @@ public class DashboardPanel extends JPanel {
         double dti = (totalEMI / income) * 100.0;
         dtiRatioLabel.setText(String.format("%.1f%%", dti));
 
-        Color healthyColor = new Color(0x2e, 0x7d, 0x32);   // #2e7d32
-        Color moderateColor = new Color(0xed, 0x6c, 0x02);  // #ed6c02
-        Color criticalColor = new Color(0xd3, 0x2f, 0x2f);  // #d32f2f
+        Color healthyColor = UITheme.ACCENT_GREEN;
+        Color moderateColor = UITheme.ACCENT_ORANGE;
+        Color criticalColor = UITheme.ACCENT_RED;
 
         if (dti < 36.0) {
             dtiRatioLabel.setForeground(healthyColor);
