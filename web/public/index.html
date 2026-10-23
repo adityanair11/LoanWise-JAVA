@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanWise — Personal Debt Prepayment & Payoff Acceleration Engine</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Unit 1: Semantic Elements (<header>, <nav>, <section>, <article>, <footer>) -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366f1;">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        <span>LoanWise</span>
+      </div>
+      <span class="brand-tag">Debt Acceleration & Prepayment Engine</span>
+    </div>
+    <div class="header-actions">
+      <span id="userBadge" class="user-badge">User: Checking session...</span>
+      <button id="authBtn" class="btn btn-secondary" style="color: #ffffff; background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2);">Sign In</button>
+    </div>
+  </header>
+
+  <!-- Semantic Navigation (<nav>) -->
+  <nav class="nav-bar">
+    <button class="nav-tab active" data-tab="dashboard">
+      <span>📊</span> Dashboard
+    </button>
+    <button class="nav-tab" data-tab="loans">
+      <span>💳</span> My Loans
+    </button>
+    <button class="nav-tab" data-tab="optimizer">
+      <span>⚡</span> Payoff Optimizer
+    </button>
+    <button class="nav-tab" data-tab="amortization">
+      <span>📅</span> Amortization Schedule
+    </button>
+    <button class="nav-tab" data-tab="audit">
+      <span>📜</span> Audit Ledger
+    </button>
+  </nav>
+
+  <!-- Main Content Container (<main>) -->
+  <main class="main-container">
+
+    <!-- 1. DASHBOARD VIEW (<section>) -->
+    <section id="tab-dashboard" class="tab-content">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Personal Debt Portfolio Overview</h1>
+          <p class="section-subtitle">Real-time exposure metrics, scheduled outflows, and portfolio velocity</p>
+        </div>
+        <button id="refreshKpisBtn" class="btn btn-secondary">↻ Refresh Data</button>
+      </div>
+
+      <!-- Unit 2: CSS Grid KPI Metrics -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">TOTAL ACTIVE DEBT</span>
+          <span id="kpiDebt" class="kpi-value" style="color: var(--accent-rose);">₹0.00</span>
+          <span class="kpi-subtext">Across all active lenders</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">ACTIVE ACCOUNTS</span>
+          <span id="kpiAccounts" class="kpi-value" style="color: var(--accent-indigo);">0</span>
+          <span class="kpi-subtext">Outstanding loan liabilities</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">MONTHLY EMI OUTFLOW</span>
+          <span id="kpiEmi" class="kpi-value" style="color: var(--accent-amber);">₹0.00</span>
+          <span class="kpi-subtext">Base scheduled commitment</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">MONTHLY INCOME</span>
+          <span id="kpiIncome" class="kpi-value" style="color: var(--accent-emerald);">₹0.00</span>
+          <span class="kpi-subtext">Verified declared earnings</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">DEBT-TO-INCOME (DTI)</span>
+          <span id="kpiDti" class="kpi-value" style="color: var(--accent-emerald);">0.0%</span>
+          <span id="kpiDtiBadge" class="badge-pill badge-green" style="align-self: flex-start;">Healthy (&lt; 36%)</span>
+        </div>
+      </div>
+
+      <!-- Portfolio Table Card (<article>) -->
+      <article class="card">
+        <div style="margin-bottom: 14px;">
+          <h2 style="font-size: 16px; font-weight: 700;">Active Liabilities Breakdown</h2>
+          <p style="font-size: 12px; color: var(--text-muted);">Account-level breakdown of sanctioned principals, active rates, and monthly obligations</p>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Loan Name</th>
+                <th>Lender</th>
+                <th>Category</th>
+                <th class="text-right">Principal (₹)</th>
+                <th class="text-right">Balance (₹)</th>
+                <th class="text-right">Interest Rate</th>
+                <th>Tenure</th>
+                <th class="text-right">Monthly EMI (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardLoansTbody">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Loading active portfolio...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- 2. MY LOANS VIEW (<section>) -->
+    <section id="tab-loans" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Manage Loan Accounts</h1>
+          <p class="section-subtitle">Register new debt facilities, edit interest rates, and apply prepayments</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="openAddLoanModalBtn" class="btn btn-primary">+ Add New Loan</button>
+          <button id="openPrepayModalBtn" class="btn btn-success">⚡ Apply Prepayment</button>
+        </div>
+      </div>
+
+      <article class="card">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Loan Name</th>
+                <th>Lender</th>
+                <th>Type</th>
+                <th class="text-right">Principal (₹)</th>
+                <th class="text-right">Balance (₹)</th>
+                <th class="text-right">Rate (%)</th>
+                <th>Rate Type</th>
+                <th>Tenure</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="loansTableTbody">
+              <tr><td colspan="11" style="text-align: center; color: var(--text-muted);">Loading loans...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- 3. PAYOFF OPTIMIZER VIEW (<section>) -->
+    <section id="tab-optimizer" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Debt Acceleration & Prepayment Optimizer</h1>
+          <p class="section-subtitle">Simulate Debt Avalanche (Highest Rate First) vs Debt Snowball (Lowest Balance First)</p>
+        </div>
+      </div>
+
+      <div class="split-grid">
+        <!-- Configuration Card -->
+        <article class="card">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 14px;">Strategy & Budget Configuration</h2>
+          
+          <div class="form-group">
+            <label class="form-label">Acceleration Strategy:</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="optStrategy" value="AVALANCHE" checked>
+                <strong>Debt Avalanche</strong> (Prioritize highest annual interest rate)
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <input type="radio" name="optStrategy" value="SNOWBALL">
+                <strong>Debt Snowball</strong> (Prioritize lowest remaining principal balance)
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin: 0;">Extra Monthly Prepayment Budget (₹):</label>
+              <input type="number" id="optBudgetInput" class="form-input" style="width: 120px; text-align: right; font-weight: 700;" value="5000" min="0" max="100000" step="500">
+            </div>
+            <input type="range" id="optBudgetSlider" min="0" max="50000" step="1000" value="5000" style="width: 100%; cursor: pointer;">
+          </div>
+
+          <button id="runSimulationBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            ⚡ Simulate Acceleration Savings
+          </button>
+        </article>
+
+        <!-- Projected Results Card -->
+        <article class="card">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 14px;">Projected Acceleration Impact</h2>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+            <div style="background: var(--bg-subtle); padding: 12px 14px; border-radius: var(--radius-sm);">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">INTEREST ELIMINATED</span>
+              <p id="optInterestSaved" style="font-size: 20px; font-weight: 700; color: var(--accent-emerald); margin-top: 4px;">₹0.00</p>
+            </div>
+            <div style="background: var(--bg-subtle); padding: 12px 14px; border-radius: var(--radius-sm);">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">TENURE SHORTENED</span>
+              <p id="optMonthsSaved" style="font-size: 20px; font-weight: 700; color: var(--accent-indigo); margin-top: 4px;">0 Months</p>
+            </div>
+          </div>
+
+          <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Target Payoff Priority Order:</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Loan Name</th>
+                  <th class="text-right">Balance (₹)</th>
+                  <th class="text-right">Rate (%)</th>
+                </tr>
+              </thead>
+              <tbody id="optPriorityTbody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Click simulate to evaluate priority</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 4. AMORTIZATION SCHEDULE VIEW (<section>) -->
+    <section id="tab-amortization" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Amortization Schedule & Scenario Simulator</h1>
+          <p class="section-subtitle">Analyze installment principal vs interest reduction and test rate adjustments</p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <select id="amortLoanSelect" class="form-select" style="width: 260px;"></select>
+          <button id="amortExportCsvBtn" class="btn btn-success">⬇ Export to CSV</button>
+        </div>
+      </div>
+
+      <!-- Scenario Simulator Card -->
+      <article class="card" style="background: var(--bg-subtle); border-color: var(--border-color); padding: 14px 18px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
+          <strong style="color: var(--accent-indigo); font-size: 13px;">Scenario Parameters:</strong>
+          
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 12px;">Extra Prepayment (₹/mo):</label>
+            <input type="number" id="scenarioPrepayInput" class="form-input" style="width: 100px;" value="0" min="0">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 12px;">Revised Rate (%):</label>
+            <input type="number" id="scenarioRateInput" class="form-input" style="width: 80px;" step="0.05" min="0.1" max="100">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 12px;">Effective From Month #:</label>
+            <input type="number" id="scenarioMonthInput" class="form-input" style="width: 70px;" value="1" min="1" max="600">
+          </div>
+
+          <button id="applyScenarioBtn" class="btn btn-primary">Apply Scenario</button>
+          <button id="resetScenarioBtn" class="btn btn-secondary">Reset to Baseline</button>
+        </div>
+      </article>
+
+      <!-- Comparative Summary Footer Banner -->
+      <div id="amortComparisonBanner" class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px;">
+        <div>
+          <p id="amortBaselineStats" style="font-size: 13px; font-weight: 600; color: var(--text-main);">Baseline: Loading...</p>
+          <p id="amortScenarioStats" style="font-size: 12px; color: var(--text-muted); margin-top: 3px;">Scenario: None applied</p>
+        </div>
+        <span id="amortDeltaBadge" class="badge-pill badge-green">Baseline Active</span>
+      </div>
+
+      <!-- Schedule Table -->
+      <article class="card">
+        <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Inst. #</th>
+                <th>Due Date</th>
+                <th class="text-right">Opening Balance (₹)</th>
+                <th class="text-right">EMI (₹)</th>
+                <th class="text-right">Principal Paid (₹)</th>
+                <th class="text-right">Interest Paid (₹)</th>
+                <th class="text-right">Closing Balance (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="amortScheduleTbody">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Select a loan to view amortization timeline</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- 5. AUDIT LEDGER VIEW (<section>) -->
+    <section id="tab-audit" class="tab-content" style="display: none;">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Automated Database Audit Ledger</h1>
+          <p class="section-subtitle">Real-time immutable log populated by MySQL database triggers and system events</p>
+        </div>
+        <button id="refreshAuditBtn" class="btn btn-secondary">↻ Refresh Ledger</button>
+      </div>
+
+      <article class="card">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Log ID</th>
+                <th>Loan ID</th>
+                <th>Action Type</th>
+                <th>Action Details</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="auditTbody">
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading audit history...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+  </main>
+
+  <!-- MODAL: ADD / EDIT LOAN -->
+  <div id="loanModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="loanModalTitle" style="font-size: 16px; font-weight: 700;">Add New Loan Facility</h3>
+        <button id="closeLoanModalBtn" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">&times;</button>
+      </div>
+      <form id="loanForm" class="modal-body">
+        <input type="hidden" id="loanModalId">
+        <div class="form-group">
+          <label class="form-label" for="loanModalName">Loan Name *</label>
+          <input type="text" id="loanModalName" class="form-input" required placeholder="e.g. Home Loan">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalLender">Lender Name *</label>
+          <input type="text" id="loanModalLender" class="form-input" required placeholder="e.g. HDFC Bank">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalType">Loan Category</label>
+          <select id="loanModalType" class="form-select">
+            <option value="HOME">HOME</option>
+            <option value="AUTO">AUTO</option>
+            <option value="PERSONAL">PERSONAL</option>
+            <option value="EDUCATION">EDUCATION</option>
+            <option value="OTHER">OTHER</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="loanModalPrincipal">Principal (₹) *</label>
+            <input type="number" id="loanModalPrincipal" class="form-input" required min="1000" step="500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loanModalBalance">Current Balance (₹) *</label>
+            <input type="number" id="loanModalBalance" class="form-input" required min="0" step="500">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="loanModalRate">Annual Rate (%) *</label>
+            <input type="number" id="loanModalRate" class="form-input" required min="0.1" max="100" step="0.05">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loanModalRateType">Rate Type</label>
+            <select id="loanModalRateType" class="form-select">
+              <option value="FIXED">FIXED</option>
+              <option value="FLOATING">FLOATING</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="loanModalTenure">Remaining Tenure (Months) *</label>
+          <input type="number" id="loanModalTenure" class="form-input" required min="1" max="600" value="120">
+        </div>
+        <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -10px;">
+          <button type="button" id="cancelLoanModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Loan Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: PREPAYMENT -->
+  <div id="prepayModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 700;">Record Loan Prepayment</h3>
+        <button id="closePrepayModalBtn" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">&times;</button>
+      </div>
+      <form id="prepayForm" class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="prepayLoanSelect">Target Loan Facility *</label>
+          <select id="prepayLoanSelect" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayAmountInput">Prepayment Amount (₹) *</label>
+          <input type="number" id="prepayAmountInput" class="form-input" required min="100" step="100" placeholder="e.g. 25000">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayStrategySelect">Strategy Tag</label>
+          <select id="prepayStrategySelect" class="form-select">
+            <option value="AVALANCHE">AVALANCHE (High Interest Priority)</option>
+            <option value="SNOWBALL">SNOWBALL (Low Balance Priority)</option>
+            <option value="MANUAL">MANUAL (One-off Lump Sum)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prepayNotesInput">Notes</label>
+          <input type="text" id="prepayNotesInput" class="form-input" value="Lump sum principal reduction">
+        </div>
+        <div class="modal-footer" style="padding-left: 0; padding-right: 0; margin-bottom: -10px;">
+          <button type="button" id="cancelPrepayModalBtn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" class="btn btn-success">Apply Prepayment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTHENTICATION (SIGN IN / REGISTER) -->
+  <div id="authModal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="authModalTitle" style="font-size: 16px; font-weight: 700;">Account Authentication</h3>
+        <button id="closeAuthModalBtn" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button id="authTabLogin" class="btn btn-primary" style="flex: 1;">Sign In</button>
+          <button id="authTabRegister" class="btn btn-secondary" style="flex: 1;">Register Account</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Email Address *</label>
+            <input type="email" id="loginEmail" class="form-input" required placeholder="aarav@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password *</label>
+            <input type="password" id="loginPassword" class="form-input" required placeholder="Password@123">
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 14px;">Demo accounts: <code>aarav@example.com</code> / <code>Password@123</code></p>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In to LoanWise</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" style="display: none;">
+          <div class="form-group">
+            <label class="form-label" for="regName">Full Name *</label>
+            <input type="text" id="regName" class="form-input" required placeholder="e.g. Priya Sharma">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regEmail">Email Address *</label>
+            <input type="email" id="regEmail" class="form-input" required placeholder="priya@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regIncome">Monthly Income (₹) *</label>
+            <input type="number" id="regIncome" class="form-input" required min="1000" placeholder="e.g. 85000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regPassword">Password *</label>
+            <input type="password" id="regPassword" class="form-input" required minlength="6" placeholder="At least 6 characters">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Create LoanWise Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Semantic Footer (<footer>) -->
+  <footer style="text-align: center; padding: 24px 0; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border-color); margin-top: 40px;">
+    LoanWise Financial Engine • Full Stack Responsive Web Platform • Symbiosis International (Deemed University)
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
