@@ -33,3 +33,4 @@ target/
 # Application runtime exports
 *.log
 *.csv
+web/node_modules
