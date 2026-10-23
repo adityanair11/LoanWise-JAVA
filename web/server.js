@@ -8,7 +8,12 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
-const pool = require('./src/db');
+const { pool, connectMongo } = require('./src/db');
+const User = require('./src/models/User');
+const Loan = require('./src/models/Loan');
+const Prepayment = require('./src/models/Prepayment');
+const AuditLog = require('./src/models/AuditLog');
+
 const { calculateEMI, generateAmortizationSchedule, generateScenarioSchedule, summarizeSchedule } = require('./src/calculator');
 const { simulatePayoff, sortLoans } = require('./src/optimizer');
 const { sendPrepaymentNotification } = require('./src/emailService');
@@ -16,6 +21,16 @@ const { sendPrepaymentNotification } = require('./src/emailService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'loanwise_default_secret_key';
+const isMongo = !!process.env.MONGODB_URI;
+
+// Initialize Database Connection
+if (isMongo) {
+  connectMongo(process.env.MONGODB_URI)
+    .then(() => console.log('[LoanWise Database] Connected to MongoDB Atlas successfully.'))
+    .catch(err => console.error('[LoanWise Database] MongoDB connection error:', err.message));
+} else {
+  console.log('[LoanWise Database] Running in MySQL relational mode.');
+}
 
 // Unit 3: Node.js EventEmitter for domain events
 class LoanWiseEventEmitter extends EventEmitter {}
@@ -38,7 +53,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Unit 3: File Uploads using Multer
+// File Uploads using Multer
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -62,8 +77,33 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// Helper to log audit events
+async function recordAudit(entityName, entityId, actionName, actionDetails) {
+  try {
+    if (isMongo) {
+      const last = await AuditLog.findOne().sort({ auditId: -1 });
+      const auditId = (last && last.auditId) ? last.auditId + 1 : Date.now();
+      await AuditLog.create({
+        auditId,
+        entityName,
+        entityId: entityId || null,
+        actionName,
+        actionDetails,
+        actionTime: new Date()
+      });
+    } else {
+      await pool.execute(
+        'INSERT INTO audit_log (entity_name, entity_id, action_name, action_details, action_time) VALUES (?, ?, ?, ?, NOW())',
+        [entityName, entityId || null, actionName, actionDetails]
+      );
+    }
+  } catch (e) {
+    console.error('[Audit Logging Error]', e.message);
+  }
+}
+
 // -------------------------------------------------------------
-// Authentication Endpoints (Unit 6: Login & Register flow)
+// Authentication Endpoints
 // -------------------------------------------------------------
 
 app.post('/api/auth/register', async (req, res) => {
@@ -76,18 +116,43 @@ app.post('/api/auth/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
     const income = parseFloat(monthlyIncome) || 0.0;
+    const cleanEmail = email.trim().toLowerCase();
 
-    const [result] = await pool.execute(
-      'INSERT INTO user_account (full_name, email, monthly_income, password_hash) VALUES (?, ?, ?, ?)',
-      [fullName.trim(), email.trim().toLowerCase(), income, hash]
-    );
+    if (isMongo) {
+      const existing = await User.findOne({ email: cleanEmail });
+      if (existing) {
+        return res.status(409).json({ error: 'An account with this email address already exists' });
+      }
 
-    const user = { userId: result.insertId, fullName: fullName.trim(), email: email.trim().toLowerCase(), monthlyIncome: income };
-    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+      const lastUser = await User.findOne().sort({ userId: -1 });
+      const nextUserId = (lastUser && lastUser.userId) ? lastUser.userId + 1 : 1;
 
-    res.status(201).json({ message: 'User registered successfully', token, user });
+      const userDoc = await User.create({
+        userId: nextUserId,
+        fullName: fullName.trim(),
+        email: cleanEmail,
+        passwordHash: hash,
+        monthlyIncome: income,
+        role: 'USER'
+      });
+
+      await recordAudit('USER', nextUserId, 'REGISTER', `User registered: ${userDoc.fullName} (${cleanEmail})`);
+
+      const user = { userId: userDoc.userId, fullName: userDoc.fullName, email: userDoc.email, monthlyIncome: userDoc.monthlyIncome };
+      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+      return res.status(201).json({ message: 'User registered successfully', token, user });
+    } else {
+      const [result] = await pool.execute(
+        'INSERT INTO user_account (full_name, email, monthly_income, password_hash) VALUES (?, ?, ?, ?)',
+        [fullName.trim(), cleanEmail, income, hash]
+      );
+
+      const user = { userId: result.insertId, fullName: fullName.trim(), email: cleanEmail, monthlyIncome: income };
+      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+      return res.status(201).json({ message: 'User registered successfully', token, user });
+    }
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
+    if (err.code === 11000 || err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'An account with this email address already exists' });
     }
     console.error('[Auth:Register]', err);
@@ -102,30 +167,56 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const [rows] = await pool.execute(
-      'SELECT user_id, full_name, email, monthly_income, password_hash FROM user_account WHERE email = ?',
-      [email.trim().toLowerCase()]
-    );
+    const cleanEmail = email.trim().toLowerCase();
 
-    if (rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+    if (isMongo) {
+      const userDoc = await User.findOne({ email: cleanEmail });
+      if (!userDoc) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const match = await bcrypt.compare(password, userDoc.passwordHash);
+      if (!match) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      await recordAudit('USER', userDoc.userId, 'USER_LOGIN', `User authenticated: ${userDoc.fullName} (${cleanEmail})`);
+
+      const user = {
+        userId: userDoc.userId,
+        fullName: userDoc.fullName,
+        email: userDoc.email,
+        monthlyIncome: parseFloat(userDoc.monthlyIncome)
+      };
+      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ message: 'Authentication successful', token, user });
+    } else {
+      const [rows] = await pool.execute(
+        'SELECT user_id, full_name, email, monthly_income, password_hash FROM user_account WHERE email = ?',
+        [cleanEmail]
+      );
+
+      if (rows.length === 0) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      const userRow = rows[0];
+      const match = await bcrypt.compare(password, userRow.password_hash);
+      if (!match) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
+      await recordAudit('USER', userRow.user_id, 'USER_LOGIN', `User authenticated: ${userRow.full_name} (${cleanEmail})`);
+
+      const user = {
+        userId: userRow.user_id,
+        fullName: userRow.full_name,
+        email: userRow.email,
+        monthlyIncome: parseFloat(userRow.monthly_income)
+      };
+      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ message: 'Authentication successful', token, user });
     }
-
-    const userRow = rows[0];
-    const match = await bcrypt.compare(password, userRow.password_hash);
-    if (!match) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const user = {
-      userId: userRow.user_id,
-      fullName: userRow.full_name,
-      email: userRow.email,
-      monthlyIncome: parseFloat(userRow.monthly_income)
-    };
-    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-
-    res.json({ message: 'Authentication successful', token, user });
   } catch (err) {
     console.error('[Auth:Login]', err);
     res.status(500).json({ error: 'Authentication failed: ' + err.message });
@@ -143,17 +234,28 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 app.get('/api/dashboard/kpis', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const [loans] = await pool.execute(
-      "SELECT * FROM loan WHERE user_id = ? AND loan_status = 'ACTIVE' AND outstanding_balance > 0",
-      [userId]
-    );
+    let loans = [];
+
+    if (isMongo) {
+      const docs = await Loan.find({ userId, loanStatus: 'ACTIVE', outstandingBalance: { $gt: 0 } });
+      loans = docs.map(d => d.toClientJSON());
+    } else {
+      const [rows] = await pool.execute(
+        "SELECT * FROM loan WHERE user_id = ? AND loan_status = 'ACTIVE' AND outstanding_balance > 0",
+        [userId]
+      );
+      loans = rows;
+    }
 
     let totalDebt = 0;
     let totalEMI = 0;
 
     for (const l of loans) {
-      totalDebt += parseFloat(l.outstanding_balance);
-      totalEMI += calculateEMI(parseFloat(l.outstanding_balance), parseFloat(l.annual_interest_rate), parseInt(l.tenure_months, 10));
+      const bal = parseFloat(l.outstanding_balance);
+      const rate = parseFloat(l.annual_interest_rate);
+      const tenure = parseInt(l.tenure_months, 10);
+      totalDebt += bal;
+      totalEMI += calculateEMI(bal, rate, tenure);
     }
 
     const income = parseFloat(req.user.monthlyIncome) || 0;
@@ -183,11 +285,17 @@ app.get('/api/dashboard/kpis', authenticateToken, async (req, res) => {
 
 app.get('/api/loans', authenticateToken, async (req, res) => {
   try {
-    const [loans] = await pool.execute(
-      'SELECT * FROM loan WHERE user_id = ? ORDER BY loan_id ASC',
-      [req.user.userId]
-    );
-    res.json({ loans });
+    if (isMongo) {
+      const docs = await Loan.find({ userId: req.user.userId }).sort({ loanId: 1 });
+      const loans = docs.map(d => d.toClientJSON());
+      return res.json({ loans });
+    } else {
+      const [loans] = await pool.execute(
+        'SELECT * FROM loan WHERE user_id = ? ORDER BY loan_id ASC',
+        [req.user.userId]
+      );
+      return res.json({ loans });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -215,13 +323,36 @@ app.post('/api/loans', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Principal, rate, and tenure must be positive values' });
     }
 
-    const [result] = await pool.execute(
-      `INSERT INTO loan (user_id, loan_name, lender_name, loan_type, principal_amount, outstanding_balance, annual_interest_rate, annual_rate_type, annual_rate_start_date, tenure_months, start_date, due_day, loan_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, CURDATE(), ?, ?)`,
-      [req.user.userId, loanName.trim(), lenderName.trim(), sanitizedType, principal, balance, rate, sanitizedRateType, tenure, due, balance <= 0 ? 'CLOSED' : 'ACTIVE']
-    );
+    if (isMongo) {
+      const lastLoan = await Loan.findOne().sort({ loanId: -1 });
+      const nextLoanId = (lastLoan && lastLoan.loanId) ? lastLoan.loanId + 1 : 1;
 
-    res.status(201).json({ message: 'Loan created successfully', loanId: result.insertId });
+      await Loan.create({
+        loanId: nextLoanId,
+        userId: req.user.userId,
+        loanName: loanName.trim(),
+        lenderName: lenderName.trim(),
+        loanType: sanitizedType,
+        principalAmount: principal,
+        outstandingBalance: balance,
+        annualInterestRate: rate,
+        annualRateType: sanitizedRateType,
+        tenureMonths: tenure,
+        loanStatus: balance <= 0 ? 'CLOSED' : 'ACTIVE'
+      });
+
+      await recordAudit('LOAN', nextLoanId, 'INSERT', `Loan facility created: ${loanName} for INR ${principal.toLocaleString('en-IN')}`);
+      return res.status(201).json({ message: 'Loan created successfully', loanId: nextLoanId });
+    } else {
+      const [result] = await pool.execute(
+        `INSERT INTO loan (user_id, loan_name, lender_name, loan_type, principal_amount, outstanding_balance, annual_interest_rate, annual_rate_type, annual_rate_start_date, tenure_months, start_date, due_day, loan_status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, CURDATE(), ?, ?)`,
+        [req.user.userId, loanName.trim(), lenderName.trim(), sanitizedType, principal, balance, rate, sanitizedRateType, tenure, due, balance <= 0 ? 'CLOSED' : 'ACTIVE']
+      );
+
+      await recordAudit('LOAN', result.insertId, 'INSERT', `Loan facility created: ${loanName} for INR ${principal.toLocaleString('en-IN')}`);
+      return res.status(201).json({ message: 'Loan created successfully', loanId: result.insertId });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -232,22 +363,41 @@ app.put('/api/loans/:id', authenticateToken, async (req, res) => {
     const loanId = parseInt(req.params.id, 10);
     const { loanName, lenderName, outstandingBalance, annualInterestRate, annualRateType, tenureMonths } = req.body;
 
-    const [current] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
-    if (current.length === 0) return res.status(404).json({ error: 'Loan not found' });
-
     const balance = parseFloat(outstandingBalance);
     const rate = parseFloat(annualInterestRate);
     const tenure = parseInt(tenureMonths, 10);
     const sanitizedRateType = (annualRateType || '').toUpperCase() === 'FLOATING' ? 'FLOATING' : 'FIXED';
     const status = balance <= 0 ? 'CLOSED' : 'ACTIVE';
 
-    await pool.execute(
-      `UPDATE loan SET loan_name = ?, lender_name = ?, outstanding_balance = ?, annual_interest_rate = ?, annual_rate_type = ?, tenure_months = ?, loan_status = ? WHERE loan_id = ?`,
-      [loanName.trim(), lenderName.trim(), balance, rate, sanitizedRateType, tenure, status, loanId]
-    );
+    if (isMongo) {
+      const doc = await Loan.findOne({ loanId, userId: req.user.userId });
+      if (!doc) return res.status(404).json({ error: 'Loan not found' });
 
-    loanEvents.emit('loanUpdated', loanId, `Updated balance: ₹${balance}, rate: ${rate}%`);
-    res.json({ message: 'Loan updated successfully' });
+      doc.loanName = loanName.trim();
+      doc.lenderName = lenderName.trim();
+      doc.outstandingBalance = balance;
+      doc.annualInterestRate = rate;
+      doc.annualRateType = sanitizedRateType;
+      doc.tenureMonths = tenure;
+      doc.loanStatus = status;
+      await doc.save();
+
+      await recordAudit('LOAN', loanId, 'UPDATE', `Loan updated: ${doc.loanName}, Balance: INR ${balance}, Rate: ${rate}%`);
+      loanEvents.emit('loanUpdated', loanId, `Updated balance: ₹${balance}, rate: ${rate}%`);
+      return res.json({ message: 'Loan updated successfully' });
+    } else {
+      const [current] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      if (current.length === 0) return res.status(404).json({ error: 'Loan not found' });
+
+      await pool.execute(
+        `UPDATE loan SET loan_name = ?, lender_name = ?, outstanding_balance = ?, annual_interest_rate = ?, annual_rate_type = ?, tenure_months = ?, loan_status = ? WHERE loan_id = ?`,
+        [loanName.trim(), lenderName.trim(), balance, rate, sanitizedRateType, tenure, status, loanId]
+      );
+
+      await recordAudit('LOAN', loanId, 'UPDATE', `Loan updated: ${loanName}, Balance: INR ${balance}, Rate: ${rate}%`);
+      loanEvents.emit('loanUpdated', loanId, `Updated balance: ₹${balance}, rate: ${rate}%`);
+      return res.json({ message: 'Loan updated successfully' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -256,9 +406,21 @@ app.put('/api/loans/:id', authenticateToken, async (req, res) => {
 app.delete('/api/loans/:id', authenticateToken, async (req, res) => {
   try {
     const loanId = parseInt(req.params.id, 10);
-    const [result] = await pool.execute('DELETE FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Loan not found' });
-    res.json({ message: 'Loan deleted successfully' });
+
+    if (isMongo) {
+      const doc = await Loan.findOneAndDelete({ loanId, userId: req.user.userId });
+      if (!doc) return res.status(404).json({ error: 'Loan not found' });
+
+      await recordAudit('LOAN', loanId, 'DELETE', `Loan deleted: ${doc.loanName}`);
+      return res.json({ message: 'Loan deleted successfully' });
+    } else {
+      const [current] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      if (current.length === 0) return res.status(404).json({ error: 'Loan not found' });
+
+      await pool.execute('DELETE FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      await recordAudit('LOAN', loanId, 'DELETE', `Loan deleted: ${current[0].loan_name}`);
+      return res.json({ message: 'Loan deleted successfully' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -273,34 +435,75 @@ app.post('/api/prepayments', authenticateToken, async (req, res) => {
     const { loanId, amount, strategy = 'AVALANCHE', notes = 'Prepayment' } = req.body;
     const payAmount = parseFloat(amount);
 
-    const [loanRows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
-    if (loanRows.length === 0) return res.status(404).json({ error: 'Loan not found' });
-
-    const loan = loanRows[0];
     if (payAmount <= 0) return res.status(400).json({ error: 'Prepayment amount must be strictly positive' });
-    if (payAmount > parseFloat(loan.outstanding_balance)) {
-      return res.status(400).json({ error: `Prepayment (₹${payAmount}) cannot exceed outstanding balance (₹${loan.outstanding_balance})` });
+
+    if (isMongo) {
+      const loan = await Loan.findOne({ loanId, userId: req.user.userId });
+      if (!loan) return res.status(404).json({ error: 'Loan not found' });
+
+      if (payAmount > loan.outstandingBalance) {
+        return res.status(400).json({ error: `Prepayment (₹${payAmount}) cannot exceed outstanding balance (₹${loan.outstandingBalance})` });
+      }
+
+      const lastPrepay = await Prepayment.findOne().sort({ prepaymentId: -1 });
+      const prepayId = (lastPrepay && lastPrepay.prepaymentId) ? lastPrepay.prepaymentId + 1 : 1;
+
+      await Prepayment.create({
+        prepaymentId: prepayId,
+        loanId,
+        userId: req.user.userId,
+        amount: payAmount,
+        strategy,
+        notes
+      });
+
+      const newBal = Math.max(0, loan.outstandingBalance - payAmount);
+      loan.outstandingBalance = newBal;
+      if (newBal === 0) loan.loanStatus = 'CLOSED';
+      await loan.save();
+
+      await recordAudit('PREPAYMENT', loanId, 'PREPAYMENT', `Prepayment amount=₹${payAmount.toFixed(2)}, new balance=₹${newBal.toFixed(2)} [${strategy}]`);
+
+      loanEvents.emit('prepaymentRecorded', {
+        loanId,
+        amount: payAmount,
+        strategy,
+        email: req.user.email,
+        fullName: req.user.fullName,
+        loanName: loan.loanName
+      });
+
+      return res.status(201).json({ message: 'Prepayment recorded successfully', prepaymentId: prepayId, newBalance: newBal });
+    } else {
+      const [loanRows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      if (loanRows.length === 0) return res.status(404).json({ error: 'Loan not found' });
+
+      const loan = loanRows[0];
+      if (payAmount > parseFloat(loan.outstanding_balance)) {
+        return res.status(400).json({ error: `Prepayment (₹${payAmount}) cannot exceed outstanding balance (₹${loan.outstanding_balance})` });
+      }
+
+      const [insertResult] = await pool.execute(
+        'INSERT INTO prepayment (loan_id, prepayment_date, amount, strategy, notes) VALUES (?, CURDATE(), ?, ?, ?)',
+        [loanId, payAmount, strategy, notes]
+      );
+
+      const newBal = Math.max(0, parseFloat(loan.outstanding_balance) - payAmount);
+      await pool.execute('UPDATE loan SET outstanding_balance = ? WHERE loan_id = ?', [newBal, loanId]);
+
+      await recordAudit('PREPAYMENT', loanId, 'PREPAYMENT', `Prepayment amount=₹${payAmount.toFixed(2)}, new balance=₹${newBal.toFixed(2)} [${strategy}]`);
+
+      loanEvents.emit('prepaymentRecorded', {
+        loanId,
+        amount: payAmount,
+        strategy,
+        email: req.user.email,
+        fullName: req.user.fullName,
+        loanName: loan.loan_name
+      });
+
+      return res.status(201).json({ message: 'Prepayment recorded successfully', prepaymentId: insertResult.insertId, newBalance: newBal });
     }
-
-    const [insertResult] = await pool.execute(
-      'INSERT INTO prepayment (loan_id, prepayment_date, amount, strategy, notes) VALUES (?, CURDATE(), ?, ?, ?)',
-      [loanId, payAmount, strategy, notes]
-    );
-
-    // MySQL triggers automatically adjust loan balance and log to audit_log
-    const newBal = Math.max(0, parseFloat(loan.outstanding_balance) - payAmount);
-    await pool.execute('UPDATE loan SET outstanding_balance = ? WHERE loan_id = ?', [newBal, loanId]);
-
-    loanEvents.emit('prepaymentRecorded', {
-      loanId,
-      amount: payAmount,
-      strategy,
-      email: req.user.email,
-      fullName: req.user.fullName,
-      loanName: loan.loan_name
-    });
-
-    res.status(201).json({ message: 'Prepayment recorded successfully', prepaymentId: insertResult.insertId, newBalance: newBal });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -313,15 +516,23 @@ app.post('/api/prepayments', authenticateToken, async (req, res) => {
 app.get('/api/amortization/:loanId', authenticateToken, async (req, res) => {
   try {
     const loanId = parseInt(req.params.loanId, 10);
-    const [rows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Loan not found' });
+    let loan = null;
 
-    const loan = rows[0];
+    if (isMongo) {
+      const doc = await Loan.findOne({ loanId, userId: req.user.userId });
+      if (!doc) return res.status(404).json({ error: 'Loan not found' });
+      loan = doc.toClientJSON();
+    } else {
+      const [rows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      if (rows.length === 0) return res.status(404).json({ error: 'Loan not found' });
+      loan = rows[0];
+    }
+
     const principal = parseFloat(loan.outstanding_balance) > 0 ? parseFloat(loan.outstanding_balance) : parseFloat(loan.principal_amount);
     const rate = parseFloat(loan.annual_interest_rate);
     const tenure = parseInt(loan.tenure_months, 10);
 
-    const schedule = generateAmortizationSchedule(principal, rate, tenure, loan.start_date || new Date());
+    const schedule = generateAmortizationSchedule(principal, rate, tenure, loan.created_at || new Date());
     const summary = summarizeSchedule(schedule);
 
     res.json({ loan, schedule, summary });
@@ -333,17 +544,25 @@ app.get('/api/amortization/:loanId', authenticateToken, async (req, res) => {
 app.post('/api/amortization/scenario', authenticateToken, async (req, res) => {
   try {
     const { loanId, extraPrepayment = 0, revisedRate, effectiveMonth = 1 } = req.body;
-    const [rows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Loan not found' });
+    let loan = null;
 
-    const loan = rows[0];
+    if (isMongo) {
+      const doc = await Loan.findOne({ loanId, userId: req.user.userId });
+      if (!doc) return res.status(404).json({ error: 'Loan not found' });
+      loan = doc.toClientJSON();
+    } else {
+      const [rows] = await pool.execute('SELECT * FROM loan WHERE loan_id = ? AND user_id = ?', [loanId, req.user.userId]);
+      if (rows.length === 0) return res.status(404).json({ error: 'Loan not found' });
+      loan = rows[0];
+    }
+
     const principal = parseFloat(loan.outstanding_balance) > 0 ? parseFloat(loan.outstanding_balance) : parseFloat(loan.principal_amount);
     const initialRate = parseFloat(loan.annual_interest_rate);
     const targetRate = revisedRate ? parseFloat(revisedRate) : initialRate;
     const tenure = parseInt(loan.tenure_months, 10);
 
-    const baselineSchedule = generateAmortizationSchedule(principal, initialRate, tenure, loan.start_date);
-    const scenarioSchedule = generateScenarioSchedule(principal, initialRate, targetRate, parseInt(effectiveMonth, 10), parseFloat(extraPrepayment), tenure, loan.start_date);
+    const baselineSchedule = generateAmortizationSchedule(principal, initialRate, tenure, loan.created_at);
+    const scenarioSchedule = generateScenarioSchedule(principal, initialRate, targetRate, parseInt(effectiveMonth, 10), parseFloat(extraPrepayment), tenure, loan.created_at);
 
     const baselineSummary = summarizeSchedule(baselineSchedule);
     const scenarioSummary = summarizeSchedule(scenarioSchedule);
@@ -368,10 +587,18 @@ app.post('/api/amortization/scenario', authenticateToken, async (req, res) => {
 app.post('/api/optimizer/simulate', authenticateToken, async (req, res) => {
   try {
     const { strategy = 'AVALANCHE', extraBudget = 5000 } = req.body;
-    const [loans] = await pool.execute(
-      "SELECT * FROM loan WHERE user_id = ? AND loan_status = 'ACTIVE' AND outstanding_balance > 0",
-      [req.user.userId]
-    );
+    let loans = [];
+
+    if (isMongo) {
+      const docs = await Loan.find({ userId: req.user.userId, loanStatus: 'ACTIVE', outstandingBalance: { $gt: 0 } });
+      loans = docs.map(d => d.toClientJSON());
+    } else {
+      const [rows] = await pool.execute(
+        "SELECT * FROM loan WHERE user_id = ? AND loan_status = 'ACTIVE' AND outstanding_balance > 0",
+        [req.user.userId]
+      );
+      loans = rows;
+    }
 
     const result = simulatePayoff(loans, strategy, parseFloat(extraBudget) || 0);
     res.json(result);
@@ -387,25 +614,28 @@ app.post('/api/optimizer/simulate', authenticateToken, async (req, res) => {
 app.get('/api/audit-logs', authenticateToken, async (req, res) => {
   try {
     let logs = [];
-    try {
-      // Primary live schema: audit_id, entity_name, entity_id, action_name, action_details, action_time
-      const [rows] = await pool.execute(
-        'SELECT audit_id, entity_id, entity_name, action_name, action_details, action_time FROM audit_log ORDER BY audit_id DESC LIMIT 100'
-      );
-      logs = rows.map(r => ({
-        log_id: r.audit_id,
-        loan_id: r.entity_id || null,
-        entity_name: r.entity_name || 'LOAN',
-        action_type: r.action_name,
-        action_details: r.action_details || '',
-        action_timestamp: r.action_time
-      }));
-    } catch (e1) {
-      // Fallback schema: log_id, loan_id, action_type, action_details, action_timestamp
-      const [rows] = await pool.execute(
-        'SELECT log_id, loan_id, action_type, action_details, action_timestamp FROM audit_log ORDER BY log_id DESC LIMIT 100'
-      );
-      logs = rows;
+    if (isMongo) {
+      const docs = await AuditLog.find().sort({ actionTime: -1, auditId: -1 }).limit(100);
+      logs = docs.map(d => d.toClientJSON());
+    } else {
+      try {
+        const [rows] = await pool.execute(
+          'SELECT audit_id, entity_id, entity_name, action_name, action_details, action_time FROM audit_log ORDER BY audit_id DESC LIMIT 100'
+        );
+        logs = rows.map(r => ({
+          log_id: r.audit_id,
+          loan_id: r.entity_id || null,
+          entity_name: r.entity_name || 'LOAN',
+          action_type: r.action_name,
+          action_details: r.action_details || '',
+          action_timestamp: r.action_time
+        }));
+      } catch (e1) {
+        const [rows] = await pool.execute(
+          'SELECT log_id, loan_id, action_type, action_details, action_timestamp FROM audit_log ORDER BY log_id DESC LIMIT 100'
+        );
+        logs = rows;
+      }
     }
     res.json({ logs });
   } catch (err) {
@@ -415,7 +645,7 @@ app.get('/api/audit-logs', authenticateToken, async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// Unit 3: File Upload Endpoint
+// File Upload Endpoint
 // -------------------------------------------------------------
 
 app.post('/api/files/upload', authenticateToken, upload.single('document'), (req, res) => {
