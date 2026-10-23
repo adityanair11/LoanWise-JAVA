@@ -34,3 +34,4 @@ target/
 *.log
 *.csv
 web/node_modules
+web/.env
